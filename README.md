@@ -14,7 +14,7 @@ Teams keep a USD balance and buy the usual kit — hubs, stands, keyboards, moni
 
 ## Stack
 
-Python 3.10+, stdlib only in production. The front is static HTML/CSS/JS served by the same process. nginx terminates TLS.
+Python 3.10+, stdlib only in production. The front is static HTML, CSS, and JS served by the same process. nginx terminates TLS.
 
 ```
 src/picket/     application

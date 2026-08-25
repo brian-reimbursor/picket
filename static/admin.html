@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ops — Picket</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="/">Picket</a>
+    <nav>
+      <a href="/shop">Shop</a>
+      <a href="/account">Wallet</a>
+      <button class="link" type="button" onclick="picket.onLogout()">Sign out</button>
+      <a href="https://github.com/brian-reimbursor/picket">Source</a>
+    </nav>
+  </header>
+  <main>
+    <p class="who" id="who"></p>
+    <h1>Ops</h1>
+    <p class="lede">Workspace wallets. Staff only.</p>
+    <section class="card">
+      <table>
+        <thead>
+          <tr><th>Email</th><th>Name</th><th>Role</th><th>Balance</th></tr>
+        </thead>
+        <tbody id="admin-body"></tbody>
+      </table>
+    </section>
+  </main>
+  <footer>
+    Picket · workspace hardware
+    · <a href="https://github.com/brian-reimbursor/picket">github.com/brian-reimbursor/picket</a>
+  </footer>
+  <script src="/static/app.js"></script>
+  <script>picket.loadAdmin();</script>
+</body>
+</html>

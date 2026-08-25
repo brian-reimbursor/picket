@@ -3,48 +3,53 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Picket — acme-payments</title>
+  <title>Picket — workspace hardware</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header>
     <a class="brand" href="/">Picket</a>
     <nav>
-      <a href="/">Workspace</a>
-      <a href="/billing">Billing</a>
+      <a href="/shop" data-auth>Shop</a>
+      <a href="/account" data-auth>Wallet</a>
+      <a href="/billing" data-auth>Add funds</a>
+      <button class="link" data-auth type="button" onclick="picket.onLogout()">Sign out</button>
       <a href="https://github.com/brian-reimbursor/picket">Source</a>
     </nav>
   </header>
   <main>
-    <p class="lede">Workspace <strong id="account-name">acme-payments</strong> · <span id="plan-name">starter</span></p>
-    <h1>Good afternoon.</h1>
-    <p class="lede">Three invoices are in flight. Sending is paused until this workspace has credits again.</p>
-    <div class="grid">
-      <section class="card">
-        <div class="tag">low balance</div>
-        <p class="credits"><span id="credit-count">3</span></p>
-        <p>send credits remaining. Each outbound invoice spends one.</p>
-        <p><a class="btn disabled" href="/billing">Buy a pack</a></p>
-      </section>
-      <section class="card">
-        <h2 style="margin-top:0;font-size:1rem;">Today</h2>
-        <p>Collector is up. Draft INV-1837 is waiting. Nothing will send until credits are restored.</p>
-      </section>
+    <p class="who" id="who"></p>
+    <h1>Hardware for the desk. Paid from the workspace wallet.</h1>
+    <p class="lede">Hubs, stands, keyboards, monitors. Each order draws USD from your Picket balance — no extra invoice round-trip.</p>
+    <div class="grid" data-guest>
+      <form class="card" onsubmit="picket.onLogin(event)">
+        <h2 style="margin-top:0;font-size:1.1rem;">Sign in</h2>
+        <label>Email</label>
+        <input name="email" type="email" autocomplete="username" required>
+        <label>Password</label>
+        <input name="password" type="password" autocomplete="current-password" required>
+        <p><button type="submit">Sign in</button></p>
+        <p class="err" id="auth-err"></p>
+      </form>
+      <form class="card" onsubmit="picket.onRegister(event)">
+        <h2 style="margin-top:0;font-size:1.1rem;">Create an account</h2>
+        <label>Name</label>
+        <input name="name" required>
+        <label>Email</label>
+        <input name="email" type="email" autocomplete="username" required>
+        <label>Password</label>
+        <input name="password" type="password" autocomplete="new-password" minlength="6" required>
+        <p>New wallets start with $4.10 in trial funds. The 27″ monitor is $189.00.</p>
+        <p><button type="submit">Create account</button></p>
+      </form>
     </div>
-    <section class="card" style="margin-top:1rem;">
-      <h2 style="margin-top:0;font-size:1rem;">Recent invoices</h2>
-      <table>
-        <thead>
-          <tr><th>ID</th><th>To</th><th>Amount</th><th>Status</th><th>When</th></tr>
-        </thead>
-        <tbody id="invoice-body"></tbody>
-      </table>
-    </section>
+    <p data-auth class="lede">You are signed in. <a href="/shop">Go to the shop</a>.</p>
   </main>
   <footer>
-    Picket · invoice sending
+    Picket · workspace hardware
     · <a href="https://github.com/brian-reimbursor/picket">github.com/brian-reimbursor/picket</a>
   </footer>
   <script src="/static/app.js"></script>
+  <script>picket.boot();</script>
 </body>
 </html>

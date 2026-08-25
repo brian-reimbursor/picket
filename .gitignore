@@ -1,4 +1,5 @@
 state.json
 grants.jsonl
+admin.secret
 __pycache__/
 *.pyc

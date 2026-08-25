@@ -6,7 +6,6 @@
   --line: #e4ddd2;
   --accent: #2c4a3e;
   --warn: #8a3b12;
-  --ok: #2c4a3e;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -16,29 +15,50 @@ body {
   color: var(--ink);
 }
 a { color: var(--accent); }
-header, main, footer { max-width: 52rem; margin: 0 auto; padding: 0 1.25rem; }
+header, main, footer { max-width: 54rem; margin: 0 auto; padding: 0 1.25rem; }
 header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   padding-top: 1.6rem;
   padding-bottom: 1.2rem;
+  gap: 1rem;
 }
 .brand { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: inherit; }
-nav a { margin-left: 1.1rem; text-decoration: none; color: var(--muted); font-size: 0.92rem; }
-nav a:hover { color: var(--ink); }
+nav a, nav button.link {
+  margin-left: 1rem;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.92rem;
+  background: none;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+nav a:hover, nav button.link:hover { color: var(--ink); }
 h1 { font-size: 1.7rem; font-weight: 600; margin: 0 0 0.35rem; }
-.lede { color: var(--muted); margin: 0 0 1.6rem; }
-.grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1rem; }
-@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+.lede { color: var(--muted); margin: 0 0 1.4rem; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.products { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 720px) {
+  .grid, .products { grid-template-columns: 1fr; }
+  nav a, nav button.link { margin-left: 0.6rem; }
+}
 .card {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 1.1rem 1.2rem;
 }
-.credits {
-  font-size: 2.6rem;
+.price {
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0.35rem 0;
+}
+.balance {
+  font-size: 2.4rem;
   font-weight: 600;
   letter-spacing: -0.03em;
   margin: 0.2rem 0;
@@ -66,6 +86,7 @@ th { color: var(--muted); font-weight: 500; font-size: 0.78rem; text-transform: 
   margin: 1rem 0 0;
   font-size: 0.95rem;
 }
+.err { color: var(--warn); font-size: 0.92rem; min-height: 1.2em; }
 button, .btn {
   font: inherit;
   background: var(--accent);
@@ -80,6 +101,16 @@ button[disabled], .btn.disabled {
   color: #7a736a;
   cursor: not-allowed;
 }
+label { display: block; font-size: 0.85rem; color: var(--muted); margin: 0.7rem 0 0.2rem; }
+input {
+  font: inherit;
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+}
 footer {
   margin-top: 2.4rem;
   padding-bottom: 2rem;
@@ -89,3 +120,4 @@ footer {
   padding-top: 1rem;
 }
 code { font-family: ui-monospace, Menlo, monospace; font-size: 0.86em; }
+.who { color: var(--muted); font-size: 0.88rem; }

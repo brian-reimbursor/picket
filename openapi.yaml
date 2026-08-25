@@ -1,68 +1,106 @@
 openapi: 3.0.3
 info:
   title: Picket API
-  version: 0.3.1
-  description: Invoice sending. Authenticated workspace calls use the session cookie. Billing grants are applied by the payment provider.
+  version: 0.4.0
+  description: |
+    Workspace hardware shop. Customers sign in and pay USD from a wallet.
+    Catalog calls are public. Orders and /api/me need the session cookie.
+    Billing grants are applied by the payment provider after a wallet load.
 servers:
   - url: https://invoices.reimbursor.info
 paths:
-  /api/me:
-    get:
-      summary: Current workspace
-      responses:
-        "200":
-          description: Workspace snapshot
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  account:
-                    type: string
-                    example: acme-payments
-                  plan:
-                    type: string
-                    example: starter
-                  credits:
-                    type: integer
-                    example: 3
-  /api/invoices:
-    get:
-      summary: Recent invoices
-      responses:
-        "200":
-          description: List
+  /api/auth/register:
     post:
-      summary: Create and send an invoice
-      description: Spends one credit. Returns 402 if the workspace has none left.
+      summary: Create a wallet
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [email, password]
               properties:
-                to:
+                name:
                   type: string
-                amount_cents:
-                  type: integer
-                memo:
+                email:
+                  type: string
+                password:
                   type: string
       responses:
         "201":
-          description: Sent
+          description: Account created; session cookie set
+        "409":
+          description: Email already used
+  /api/auth/login:
+    post:
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Session cookie set
+        "401":
+          description: Bad credentials
+  /api/auth/logout:
+    post:
+      summary: Sign out
+      responses:
+        "200":
+          description: Cookie cleared
+  /api/me:
+    get:
+      summary: Current wallet
+      responses:
+        "200":
+          description: Profile and USD balance
+        "401":
+          description: Not signed in
+  /api/catalog:
+    get:
+      summary: Hardware catalog
+      responses:
+        "200":
+          description: Items with price_cents
+  /api/orders:
+    post:
+      summary: Buy an item
+      description: Draws USD from the signed-in wallet. Returns 402 if the balance is short.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sku]
+              properties:
+                sku:
+                  type: string
+                  example: monitor-4k
+      responses:
+        "201":
+          description: Purchased
         "402":
-          description: No send credits remaining
+          description: Insufficient funds
   /api/billing/grants:
     post:
-      summary: Apply a credit grant
+      summary: Apply a wallet grant
       description: |
-        Called by the billing provider after a pack is paid.
-        Body is JSON. `account` is the workspace slug; `credits` is how many
-        sends to add (not a replacement of the current balance).
+        Called by the billing provider after a USD load is paid.
+        `account` is the customer email. `amount_usd` is how many dollars
+        to add (not a replacement of the current balance).
 
         Production verifies `X-Picket-Signature`. Local and the current
-        deploy accept the body without a signature so packs can be
+        deploy accept the body without a signature so loads can be
         replayed while checkout is down.
       requestBody:
         required: true
@@ -70,15 +108,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [account, credits]
+              required: [account, amount_usd]
               properties:
                 account:
                   type: string
-                  example: acme-payments
-                credits:
-                  type: integer
-                  minimum: 1
-                  example: 25
+                  example: alex@acme.test
+                amount_usd:
+                  type: number
+                  example: 100
       responses:
         "200":
           description: Grant applied
@@ -91,7 +128,8 @@ paths:
                     type: boolean
                   account:
                     type: string
-                  credits:
-                    type: integer
-        "400":
-          description: Missing fields
+                  balance:
+                    type: string
+                    example: "$104.10"
+        "404":
+          description: Unknown account

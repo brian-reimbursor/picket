@@ -1,18 +1,21 @@
 # Picket
 
-Invoice sending for small teams. You buy send credits; each invoice that goes out spends one.
+Workspace hardware shop. Customers keep a USD wallet and buy deskside gear (hubs, stands, monitors, docks). Each order draws from that balance.
 
 Production: https://invoices.reimbursor.info/
 
-## Usage
+## HTTP
 
 ```
+POST /api/auth/register
+POST /api/auth/login
 GET  /api/me
-POST /api/invoices
-POST /api/billing/grants   # billing provider → us, after a pack purchase
+GET  /api/catalog
+POST /api/orders
+POST /api/billing/grants   # billing provider → us, after a wallet load
 ```
 
-The HTTP surface is in [`openapi.yaml`](openapi.yaml).
+Full contract: [`openapi.yaml`](openapi.yaml).
 
 ## Run locally
 
@@ -20,4 +23,4 @@ The HTTP surface is in [`openapi.yaml`](openapi.yaml).
 python3 server.py --port 7771
 ```
 
-State lives in `state.json` next to the process.
+`state.json` holds users and sessions. Do not commit it.

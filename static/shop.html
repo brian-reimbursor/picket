@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Add funds — Picket</title>
+  <title>Shop — Picket</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -19,26 +19,15 @@
   </header>
   <main>
     <p class="who" id="who"></p>
-    <h1>Add funds</h1>
-    <p class="lede">Card checkout loads USD into the workspace wallet. Hardware orders then draw from that balance.</p>
-    <div class="note">
-      Checkout is temporarily unavailable — the billing provider is rotating keys.
-      Transfers you already paid are applied as grants and usually land within a few minutes.
-      If a transfer is stuck, write in and we will replay the grant.
-    </div>
-    <section class="card" style="margin-top:1rem;">
-      <h2 style="margin-top:0;font-size:1rem;">Load amounts</h2>
-      <p>$25.00 · desk extras</p>
-      <p>$100.00 · monitor / dock</p>
-      <p>$250.00 · full desk</p>
-      <p><button type="button" disabled>Checkout unavailable</button></p>
-    </section>
+    <h1>Shop</h1>
+    <p class="lede">Wallet <strong id="balance">—</strong>. Orders ship to the office on file.</p>
+    <div class="products" id="products"></div>
   </main>
   <footer>
     Picket · workspace hardware
     · <a href="https://github.com/brian-reimbursor/picket">github.com/brian-reimbursor/picket</a>
   </footer>
   <script src="/static/app.js"></script>
-  <script>picket.boot();</script>
+  <script>picket.loadShop();</script>
 </body>
 </html>

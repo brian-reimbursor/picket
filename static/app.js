@@ -1,5 +1,5 @@
 // Workspace bootstrap. HTTP contract lives with the source:
-// https://github.com/brian-nullzone/picket/blob/main/openapi.yaml
+// https://github.com/brian-reimbursor/picket/blob/main/openapi.yaml
 
 async function loadMe() {
   const res = await fetch("/api/me");

@@ -30,7 +30,7 @@ function paintNav(user) {
   guest.forEach((el) => {
     el.style.display = user ? "none" : "";
   });
-  if (who && user) who.textContent = user.email + " · " + user.balance;
+  if (who && user) who.textContent = user.email;
 }
 
 async function boot() {

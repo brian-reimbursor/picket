@@ -4,13 +4,19 @@ info:
   version: 0.4.0
   description: |
     Workspace hardware shop. Customers sign in and pay USD from a wallet.
-    Catalog calls are public. Orders and /api/me need the session cookie.
-    Billing grants are applied by the payment provider after a wallet load.
+    Catalog is public. Orders and `/api/me` require the session cookie.
+    Wallet loads from the billing provider arrive as signed grants.
 servers:
   - url: https://invoices.reimbursor.info
+tags:
+  - name: auth
+  - name: catalog
+  - name: wallet
+  - name: billing
 paths:
   /api/auth/register:
     post:
+      tags: [auth]
       summary: Create a wallet
       requestBody:
         required: true
@@ -20,19 +26,15 @@ paths:
               type: object
               required: [email, password]
               properties:
-                name:
-                  type: string
-                email:
-                  type: string
-                password:
-                  type: string
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 6 }
       responses:
-        "201":
-          description: Account created; session cookie set
-        "409":
-          description: Email already used
+        "201": { description: Account created; session cookie set }
+        "409": { description: Email already used }
   /api/auth/login:
     post:
+      tags: [auth]
       summary: Sign in
       requestBody:
         required: true
@@ -42,37 +44,33 @@ paths:
               type: object
               required: [email, password]
               properties:
-                email:
-                  type: string
-                password:
-                  type: string
+                email: { type: string, format: email }
+                password: { type: string }
       responses:
-        "200":
-          description: Session cookie set
-        "401":
-          description: Bad credentials
+        "200": { description: Session cookie set }
+        "401": { description: Bad credentials }
   /api/auth/logout:
     post:
+      tags: [auth]
       summary: Sign out
       responses:
-        "200":
-          description: Cookie cleared
+        "200": { description: Cookie cleared }
   /api/me:
     get:
+      tags: [wallet]
       summary: Current wallet
       responses:
-        "200":
-          description: Profile and USD balance
-        "401":
-          description: Not signed in
+        "200": { description: Profile and USD balance }
+        "401": { description: Not signed in }
   /api/catalog:
     get:
+      tags: [catalog]
       summary: Hardware catalog
       responses:
-        "200":
-          description: Items with price_cents
+        "200": { description: Items with price_cents }
   /api/orders:
     post:
+      tags: [catalog]
       summary: Buy an item
       description: Draws USD from the signed-in wallet. Returns 402 if the balance is short.
       requestBody:
@@ -83,25 +81,26 @@ paths:
               type: object
               required: [sku]
               properties:
-                sku:
-                  type: string
-                  example: monitor-4k
+                sku: { type: string, example: monitor-4k }
       responses:
-        "201":
-          description: Purchased
-        "402":
-          description: Insufficient funds
+        "201": { description: Purchased }
+        "402": { description: Insufficient funds }
   /api/billing/grants:
     post:
+      tags: [billing]
       summary: Apply a wallet grant
       description: |
-        Called by the billing provider after a USD load is paid.
-        `account` is the customer email. `amount_usd` is how many dollars
-        to add (not a replacement of the current balance).
+        Webhook from the billing provider after a USD load clears.
+        `account` is the customer email. `amount_usd` is added to the
+        current balance (it is not a replacement).
 
-        Production verifies `X-Picket-Signature`. Local and the current
-        deploy accept the body without a signature so loads can be
-        replayed while checkout is down.
+        Sign the raw JSON body with HMAC-SHA256 and send it as
+        `X-Picket-Signature`.
+      parameters:
+        - in: header
+          name: X-Picket-Signature
+          schema: { type: string }
+          description: HMAC-SHA256 of the raw request body
       requestBody:
         required: true
         content:
@@ -112,6 +111,7 @@ paths:
               properties:
                 account:
                   type: string
+                  format: email
                   example: alex@acme.test
                 amount_usd:
                   type: number
@@ -124,12 +124,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok:
-                    type: boolean
-                  account:
-                    type: string
-                  balance:
-                    type: string
-                    example: "$104.10"
-        "404":
-          description: Unknown account
+                  ok: { type: boolean }
+                  account: { type: string }
+                  balance: { type: string, example: "$104.10" }
+        "404": { description: Unknown account }

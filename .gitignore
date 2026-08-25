@@ -1,5 +1,9 @@
 state.json
 grants.jsonl
 admin.secret
+.venv/
+.pytest_cache/
 __pycache__/
 *.pyc
+*.egg-info/
+dist/

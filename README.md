@@ -1,26 +1,46 @@
 # Picket
 
-Workspace hardware shop. Customers keep a USD wallet and buy deskside gear (hubs, stands, monitors, docks). Each order draws from that balance.
+Hardware for the desk, paid from a workspace wallet.
 
-Production: https://invoices.reimbursor.info/
+Teams keep a USD balance and buy the usual kit — hubs, stands, keyboards, monitors, docks — without a separate invoice round-trip for every dongle. Production lives at [invoices.reimbursor.info](https://invoices.reimbursor.info/).
 
-## HTTP
+## Features
+
+- Email signup and session login
+- Catalog with USD prices
+- Wallet that orders draw from
+- Staff view of workspace balances
+- Billing provider hooks when a load clears (see the HTTP spec under `docs/`)
+
+## Stack
+
+Python 3.10+, stdlib only in production. The front is static HTML/CSS/JS served by the same process. nginx terminates TLS.
 
 ```
-POST /api/auth/register
-POST /api/auth/login
-GET  /api/me
-GET  /api/catalog
-POST /api/orders
-POST /api/billing/grants   # billing provider → us, after a wallet load
+src/picket/     application
+static/         storefront
+docs/           product + OpenAPI
+tests/
 ```
 
-Full contract: [`openapi.yaml`](openapi.yaml).
-
-## Run locally
+## Local
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 python3 server.py --port 7771
 ```
 
-`state.json` holds users and sessions. Do not commit it.
+Then http://127.0.0.1:7771/
+
+```bash
+python -m pytest -q
+```
+
+Self-hosting notes: [`docs/self-hosting.md`](docs/self-hosting.md).  
+HTTP contract: [`docs/openapi.yaml`](docs/openapi.yaml).
+
+## License
+
+MIT. See `LICENSE`.

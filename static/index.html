@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Picket — acme-payments</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="/">Picket</a>
+    <nav>
+      <a href="/">Workspace</a>
+      <a href="/billing">Billing</a>
+      <a href="https://github.com/brian-nullzone/picket">Source</a>
+    </nav>
+  </header>
+  <main>
+    <p class="lede">Workspace <strong id="account-name">acme-payments</strong> · <span id="plan-name">starter</span></p>
+    <h1>Good afternoon.</h1>
+    <p class="lede">Three invoices are in flight. Sending is paused until this workspace has credits again.</p>
+    <div class="grid">
+      <section class="card">
+        <div class="tag">low balance</div>
+        <p class="credits"><span id="credit-count">3</span></p>
+        <p>send credits remaining. Each outbound invoice spends one.</p>
+        <p><a class="btn disabled" href="/billing">Buy a pack</a></p>
+      </section>
+      <section class="card">
+        <h2 style="margin-top:0;font-size:1rem;">Today</h2>
+        <p>Collector is up. Draft INV-1837 is waiting. Nothing will send until credits are restored.</p>
+      </section>
+    </div>
+    <section class="card" style="margin-top:1rem;">
+      <h2 style="margin-top:0;font-size:1rem;">Recent invoices</h2>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>To</th><th>Amount</th><th>Status</th><th>When</th></tr>
+        </thead>
+        <tbody id="invoice-body"></tbody>
+      </table>
+    </section>
+  </main>
+  <footer>
+    Picket · invoice sending
+    · <a href="https://github.com/brian-nullzone/picket">github.com/brian-nullzone/picket</a>
+  </footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>

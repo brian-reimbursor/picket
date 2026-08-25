@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Billing — Picket</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="/">Picket</a>
+    <nav>
+      <a href="/">Workspace</a>
+      <a href="/billing">Billing</a>
+      <a href="https://github.com/brian-nullzone/picket">Source</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Billing</h1>
+    <p class="lede">Workspace <strong id="account-name">acme-payments</strong> has <strong id="credit-count">3</strong> send credits left.</p>
+    <div class="note">
+      Checkout is temporarily unavailable — the billing provider is rotating keys.
+      Packs you already paid for are applied as grants; they usually land within a few minutes.
+      If a pack is stuck, write in and we will replay the grant.
+    </div>
+    <section class="card" style="margin-top:1rem;">
+      <h2 style="margin-top:0;font-size:1rem;">Packs</h2>
+      <p>Starter top-up · 25 sends · $9</p>
+      <p>Team top-up · 100 sends · $29</p>
+      <p><button type="button" disabled>Checkout unavailable</button></p>
+    </section>
+  </main>
+  <footer>
+    Picket · invoice sending
+    · <a href="https://github.com/brian-nullzone/picket">github.com/brian-nullzone/picket</a>
+  </footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+:root {
+  --bg: #f4f1ea;
+  --ink: #1c1916;
+  --muted: #6b645c;
+  --card: #fffdf8;
+  --line: #e4ddd2;
+  --accent: #2c4a3e;
+  --warn: #8a3b12;
+  --ok: #2c4a3e;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font: 15px/1.5 "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+a { color: var(--accent); }
+header, main, footer { max-width: 52rem; margin: 0 auto; padding: 0 1.25rem; }
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-top: 1.6rem;
+  padding-bottom: 1.2rem;
+}
+.brand { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: inherit; }
+nav a { margin-left: 1.1rem; text-decoration: none; color: var(--muted); font-size: 0.92rem; }
+nav a:hover { color: var(--ink); }
+h1 { font-size: 1.7rem; font-weight: 600; margin: 0 0 0.35rem; }
+.lede { color: var(--muted); margin: 0 0 1.6rem; }
+.grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1rem; }
+@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.1rem 1.2rem;
+}
+.credits {
+  font-size: 2.6rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0.2rem 0;
+}
+.tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--warn);
+  border: 1px solid #e8c4ae;
+  background: #fbf0e8;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+}
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th, td { text-align: left; padding: 0.45rem 0; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 500; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.note {
+  background: #fbf0e8;
+  border: 1px solid #e8c4ae;
+  color: var(--warn);
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  margin: 1rem 0 0;
+  font-size: 0.95rem;
+}
+button, .btn {
+  font: inherit;
+  background: var(--accent);
+  color: #f4f1ea;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+}
+button[disabled], .btn.disabled {
+  background: #c9c2b6;
+  color: #7a736a;
+  cursor: not-allowed;
+}
+footer {
+  margin-top: 2.4rem;
+  padding-bottom: 2rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+code { font-family: ui-monospace, Menlo, monospace; font-size: 0.86em; }

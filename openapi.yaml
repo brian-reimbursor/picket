@@ -1,0 +1,97 @@
+openapi: 3.0.3
+info:
+  title: Picket API
+  version: 0.3.1
+  description: Invoice sending. Authenticated workspace calls use the session cookie. Billing grants are applied by the payment provider.
+servers:
+  - url: https://invoices.reimbursor.info
+paths:
+  /api/me:
+    get:
+      summary: Current workspace
+      responses:
+        "200":
+          description: Workspace snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account:
+                    type: string
+                    example: acme-payments
+                  plan:
+                    type: string
+                    example: starter
+                  credits:
+                    type: integer
+                    example: 3
+  /api/invoices:
+    get:
+      summary: Recent invoices
+      responses:
+        "200":
+          description: List
+    post:
+      summary: Create and send an invoice
+      description: Spends one credit. Returns 402 if the workspace has none left.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to:
+                  type: string
+                amount_cents:
+                  type: integer
+                memo:
+                  type: string
+      responses:
+        "201":
+          description: Sent
+        "402":
+          description: No send credits remaining
+  /api/billing/grants:
+    post:
+      summary: Apply a credit grant
+      description: |
+        Called by the billing provider after a pack is paid.
+        Body is JSON. `account` is the workspace slug; `credits` is how many
+        sends to add (not a replacement of the current balance).
+
+        Production verifies `X-Picket-Signature`. Local and the current
+        deploy accept the body without a signature so packs can be
+        replayed while checkout is down.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account, credits]
+              properties:
+                account:
+                  type: string
+                  example: acme-payments
+                credits:
+                  type: integer
+                  minimum: 1
+                  example: 25
+      responses:
+        "200":
+          description: Grant applied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  account:
+                    type: string
+                  credits:
+                    type: integer
+        "400":
+          description: Missing fields

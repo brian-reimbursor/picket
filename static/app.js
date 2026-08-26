@@ -96,10 +96,10 @@ async function loadShop() {
   const pending = user.pending_loads || [];
   if (note && pending.length) {
     note.style.display = "";
-    note.innerHTML =
+    note.textContent =
       "A " +
       pending[0].amount +
-      ' top-up is still confirming. <a href="/account">Retry it from the wallet</a> if the balance did not move.';
+      " top-up is with the card processor. Billing is still reconnecting.";
   }
   const { data } = await api("/api/catalog");
   const root = document.getElementById("products");
@@ -207,21 +207,7 @@ async function loadAccount() {
   if (name) name.textContent = user.name;
   const pendingCard = document.getElementById("pending-card");
   const loads = user.pending_loads || [];
-  const pendingAmt = document.getElementById("pending-amount");
-  const pendingLabel = document.getElementById("pending-label");
-  const pendingBtn = document.getElementById("pending-apply");
-  if (pendingCard) {
-    pendingCard.style.display = loads.length ? "" : "none";
-    if (loads.length) {
-      if (pendingAmt) pendingAmt.textContent = loads[0].amount;
-      if (pendingLabel) pendingLabel.textContent = loads[0].label;
-      if (pendingBtn) {
-        pendingBtn.onclick = function () {
-          applyPending(loads[0].id);
-        };
-      }
-    }
-  }
+  if (pendingCard) pendingCard.style.display = loads.length ? "" : "none";
   const cartBody = document.getElementById("cart-body");
   if (cartBody) {
     const cart = user.cart || [];
@@ -388,7 +374,6 @@ window.picket = {
   loadShop,
   loadAccount,
   loadAdmin,
-  applyPending,
   adminCreate,
   adminReset,
   adminSet,

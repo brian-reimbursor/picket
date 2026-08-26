@@ -1,8 +1,7 @@
 # Stuck card loads
 
-If checkout dies after the card processor captures a top-up, the wallet
-shows that payment as still confirming. `POST /api/billing/pending/apply`
-is the customer retry: confirm with the processor, then book the wallet
-once for that payment id.
-
-Staff can set a balance from `/admin` if a customer writes in.
+A top-up can clear at the processor while billing is still reconnecting.
+The wallet lists it on `GET /api/me` as `pending_loads`. Ops books it with
+`POST /api/billing/pending/apply` `{ "id": "<payment id>" }` — one credit
+per payment id. Customers do not have a button for this; they wait or write
+in to staff.

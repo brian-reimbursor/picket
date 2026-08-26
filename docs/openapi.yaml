@@ -90,9 +90,9 @@ paths:
       tags: [billing]
       summary: Apply a stuck card load
       description: |
-        Retry for a top-up the card processor already captured.
-        Pass `id` from `/api/me` pending_loads. The same payment id
-        should credit the wallet once.
+        Ops-only booking for a top-up the card processor already captured.
+        Pass `id` from `pending_loads` on `GET /api/me`. The same payment
+        id should credit the wallet once. Not linked from the storefront.
       requestBody:
         content:
           application/json:

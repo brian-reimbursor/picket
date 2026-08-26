@@ -33,6 +33,7 @@ def new_user(email: str, password: str, name: str, role: str, balance_cents: int
         "password_hash": password_hash(password, salt),
         "balance_cents": balance_cents,
         "orders": [],
+        "promos": [],
         "created": now(),
     }
 

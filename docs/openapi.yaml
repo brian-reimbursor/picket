@@ -85,6 +85,27 @@ paths:
       responses:
         "201": { description: Purchased }
         "402": { description: Insufficient funds }
+  /api/promos/redeem:
+    post:
+      tags: [wallet]
+      summary: Redeem a launch credit
+      description: |
+        Applies a one-time workspace credit. Each code can be redeemed
+        once per account. `DESK-CREDIT` is the current launch amount
+        ($100.00).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, example: DESK-CREDIT }
+      responses:
+        "200": { description: Applied }
+        "401": { description: Not signed in }
+        "409": { description: Already redeemed }
   /api/billing/grants:
     post:
       tags: [billing]

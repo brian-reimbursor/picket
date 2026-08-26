@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
+import os
 import secrets
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
@@ -14,6 +18,9 @@ from picket.store import ROOT, load, log_grant, new_user, now, password_hash, sa
 
 STATIC = ROOT / "static"
 LOCK = threading.Lock()
+PROMO_CODES = {
+    "DESK-CREDIT": 10000,  # $100.00, one redemption per workspace
+}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -60,17 +67,34 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, code: int, obj: object, extra: list[tuple[str, str]] | None = None) -> None:
         self._send(code, json.dumps(obj).encode(), "application/json", extra)
 
+    def _raw_body(self) -> bytes:
+        if getattr(self, "_cached_body", None) is None:
+            try:
+                n = int(self.headers.get("Content-Length") or "0")
+            except ValueError:
+                n = 0
+            self._cached_body = self.rfile.read(n) if n else b"{}"
+        return self._cached_body
+
     def _read_json(self) -> dict | None:
         try:
-            n = int(self.headers.get("Content-Length") or "0")
-        except ValueError:
-            return None
-        raw = self.rfile.read(n) if n else b"{}"
-        try:
-            data = json.loads(raw.decode() or "{}")
+            data = json.loads(self._raw_body().decode() or "{}")
         except json.JSONDecodeError:
             return None
         return data if isinstance(data, dict) else None
+
+    def _billing_secret(self) -> bytes | None:
+        secret = os.environ.get("PICKET_BILLING_SECRET") or ""
+        secret = secret.strip()
+        return secret.encode() if secret else None
+
+    def _valid_grant_signature(self) -> bool:
+        secret = self._billing_secret()
+        if not secret:
+            return False
+        got = (self.headers.get("X-Picket-Signature") or "").strip()
+        expect = hmac.new(secret, self._raw_body(), hashlib.sha256).hexdigest()
+        return bool(got) and hmac.compare_digest(got, expect)
 
     def _file(self, name: str) -> None:
         path = STATIC / name
@@ -238,6 +262,37 @@ class Handler(BaseHTTPRequestHandler):
                 balance = user["balance_cents"]
             self._json(201, {"order": order, "balance": dollars(balance)})
             return
+        if path == "/api/promos/redeem":
+            payload = self._read_json() or {}
+            code = str(payload.get("code") or "").strip().upper()
+            amount = PROMO_CODES.get(code)
+            if amount is None:
+                self._json(404, {"error": "unknown code"})
+                return
+            with LOCK:
+                st = load()
+                user = self._user(st)
+                if not user:
+                    self._json(401, {"error": "sign in"})
+                    return
+                email = user["email"]
+                if code in (user.get("promos") or []):
+                    self._json(409, {"error": "already redeemed"})
+                    return
+            # Round-trip to the promotions service — do not hold the store lock.
+            time.sleep(0.35)
+            with LOCK:
+                st = load()
+                user = st["users"].get(email)
+                if not user:
+                    self._json(401, {"error": "sign in"})
+                    return
+                user.setdefault("promos", []).append(code)
+                user["balance_cents"] = int(user["balance_cents"]) + amount
+                save(st)
+                total = user["balance_cents"]
+            self._json(200, {"ok": True, "code": code, "balance": dollars(total)})
+            return
         if path == "/api/billing/grants":
             payload = self._read_json()
             if payload is None:
@@ -258,7 +313,12 @@ class Handler(BaseHTTPRequestHandler):
             if not account or cents < 1:
                 self._json(400, {"error": "account and amount_usd required"})
                 return
-            # HMAC of the body belongs on X-Picket-Signature in production.
+            if not self._billing_secret():
+                self._json(503, {"error": "billing grants not configured"})
+                return
+            if not self._valid_grant_signature():
+                self._json(401, {"error": "invalid signature"})
+                return
             with LOCK:
                 st = load()
                 user = st["users"].get(account)

@@ -48,6 +48,15 @@ class Handler(BaseHTTPRequestHandler):
             return None
         return state["users"].get(email)
 
+    def _require_admin(self, state: dict) -> dict | None:
+        user = self._user(state)
+        if not user or user.get("role") != "admin":
+            return None
+        return user
+
+    def _catalog(self, state: dict) -> list[dict]:
+        return state.get("catalog") or []
+
     def _send(
         self,
         code: int,
@@ -132,7 +141,20 @@ class Handler(BaseHTTPRequestHandler):
             self._file(path.split("/")[-1])
             return
         if path == "/api/catalog":
-            self._json(200, {"items": public_items()})
+            with LOCK:
+                st = load()
+                items = self._catalog(st) or public_items()
+            listed = [
+                {
+                    "sku": i["sku"],
+                    "name": i["name"],
+                    "price": dollars(i["price_cents"]),
+                    "price_cents": i["price_cents"],
+                    "blurb": i.get("blurb") or "",
+                }
+                for i in items
+            ]
+            self._json(200, {"items": listed})
             return
         if path == "/api/me":
             with LOCK:
@@ -156,11 +178,17 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/admin/users":
             with LOCK:
                 st = load()
-                user = self._user(st)
+                if not self._require_admin(st):
+                    self._json(403, {"error": "admin only"})
+                    return
                 users = st["users"]
-            if not user or user.get("role") != "admin":
-                self._json(403, {"error": "admin only"})
-                return
+                catalog = self._catalog(st)
+            orders = []
+            for u in users.values():
+                for order in u.get("orders") or []:
+                    row = dict(order)
+                    row["email"] = u["email"]
+                    orders.append(row)
             self._json(
                 200,
                 {
@@ -170,9 +198,22 @@ class Handler(BaseHTTPRequestHandler):
                             "name": u["name"],
                             "role": u["role"],
                             "balance": dollars(u["balance_cents"]),
+                            "promos": u.get("promos") or [],
+                            "orders": u.get("orders") or [],
                         }
                         for u in users.values()
-                    ]
+                    ],
+                    "catalog": [
+                        {
+                            "sku": i["sku"],
+                            "name": i["name"],
+                            "price": dollars(i["price_cents"]),
+                            "price_cents": i["price_cents"],
+                            "blurb": i.get("blurb") or "",
+                        }
+                        for i in catalog
+                    ],
+                    "orders": orders[:40],
                 },
             )
             return
@@ -229,15 +270,15 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/orders":
             payload = self._read_json() or {}
             sku = str(payload.get("sku") or "")
-            item = catalog_get(sku)
-            if not item:
-                self._json(404, {"error": "unknown sku"})
-                return
             with LOCK:
                 st = load()
                 user = self._user(st)
                 if not user:
                     self._json(401, {"error": "sign in"})
+                    return
+                item = catalog_get(sku, self._catalog(st))
+                if not item:
+                    self._json(404, {"error": "unknown sku"})
                     return
                 if user["balance_cents"] < item["price_cents"]:
                     self._json(
@@ -292,6 +333,84 @@ class Handler(BaseHTTPRequestHandler):
                 save(st)
                 total = user["balance_cents"]
             self._json(200, {"ok": True, "code": code, "balance": dollars(total)})
+            return
+        if path == "/api/admin/credit":
+            payload = self._read_json() or {}
+            email = str(payload.get("email") or "").strip().lower()
+            try:
+                cents = int(round(float(payload.get("amount_usd") or 0) * 100))
+            except (TypeError, ValueError):
+                cents = 0
+            memo = str(payload.get("memo") or "ops credit").strip()
+            if not email or cents < 1:
+                self._json(400, {"error": "email and amount_usd required"})
+                return
+            with LOCK:
+                st = load()
+                if not self._require_admin(st):
+                    self._json(403, {"error": "admin only"})
+                    return
+                target = st["users"].get(email)
+                if not target:
+                    self._json(404, {"error": "unknown account"})
+                    return
+                target["balance_cents"] = int(target["balance_cents"]) + cents
+                save(st)
+                total = target["balance_cents"]
+            log_grant(
+                {
+                    "ts": now(),
+                    "ip": self.address_string(),
+                    "ua": self.headers.get("User-Agent"),
+                    "account": email,
+                    "added_cents": cents,
+                    "balance": dollars(total),
+                    "source": "admin",
+                    "memo": memo,
+                }
+            )
+            self._json(200, {"ok": True, "email": email, "balance": dollars(total)})
+            return
+        if path == "/api/admin/catalog":
+            payload = self._read_json() or {}
+            sku = str(payload.get("sku") or "").strip()
+            name = str(payload.get("name") or "").strip()
+            blurb = str(payload.get("blurb") or "").strip()
+            try:
+                price_cents = int(payload.get("price_cents"))
+            except (TypeError, ValueError):
+                price_cents = -1
+            if not sku or not name or price_cents < 0:
+                self._json(400, {"error": "sku, name, price_cents required"})
+                return
+            with LOCK:
+                st = load()
+                if not self._require_admin(st):
+                    self._json(403, {"error": "admin only"})
+                    return
+                items = self._catalog(st)
+                found = None
+                for item in items:
+                    if item["sku"] == sku:
+                        found = item
+                        break
+                if found:
+                    found["name"] = name
+                    found["price_cents"] = price_cents
+                    if blurb:
+                        found["blurb"] = blurb
+                else:
+                    items.append(
+                        {
+                            "sku": sku,
+                            "name": name,
+                            "price_cents": price_cents,
+                            "blurb": blurb,
+                        }
+                    )
+                    st["catalog"] = items
+                save(st)
+            self._json(200, {"ok": True, "sku": sku})
             return
         if path == "/api/billing/grants":
             payload = self._read_json()

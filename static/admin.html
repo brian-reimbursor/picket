@@ -12,6 +12,7 @@
     <nav>
       <a href="/shop">Shop</a>
       <a href="/account">Wallet</a>
+      <a href="/admin" data-admin>Ops</a>
       <button class="link" type="button" onclick="picket.onLogout()">Sign out</button>
       <a href="https://github.com/brian-reimbursor/picket">Source</a>
     </nav>
@@ -19,13 +20,33 @@
   <main>
     <p class="who" id="who"></p>
     <h1>Ops</h1>
-    <p class="lede">Workspace wallets. Staff only.</p>
+    <p class="lede">Staff can credit wallets when a pack is stuck, and change catalog prices. Launch codes are still customer self-serve.</p>
+    <p class="err" id="admin-err"></p>
     <section class="card">
+      <h2 style="margin-top:0;font-size:1rem;">Wallets</h2>
       <table>
         <thead>
-          <tr><th>Email</th><th>Name</th><th>Role</th><th>Balance</th></tr>
+          <tr><th>Email</th><th>Name</th><th>Role</th><th>Balance</th><th>Credit USD</th></tr>
         </thead>
         <tbody id="admin-body"></tbody>
+      </table>
+    </section>
+    <section class="card" style="margin-top:1rem;">
+      <h2 style="margin-top:0;font-size:1rem;">Catalog</h2>
+      <table>
+        <thead>
+          <tr><th>SKU</th><th>Name</th><th>Price</th><th>Set USD</th></tr>
+        </thead>
+        <tbody id="catalog-body"></tbody>
+      </table>
+    </section>
+    <section class="card" style="margin-top:1rem;">
+      <h2 style="margin-top:0;font-size:1rem;">Recent orders</h2>
+      <table>
+        <thead>
+          <tr><th>Account</th><th>PO</th><th>Item</th><th>Amount</th></tr>
+        </thead>
+        <tbody id="order-body"></tbody>
       </table>
     </section>
   </main>

@@ -7,7 +7,10 @@ import json
 import os
 import secrets
 from datetime import datetime, timezone
+from copy import deepcopy
 from pathlib import Path
+
+from picket.catalog import CATALOG
 
 ROOT = Path(__file__).resolve().parents[2]
 STATE_PATH = ROOT / "state.json"
@@ -40,7 +43,10 @@ def new_user(email: str, password: str, name: str, role: str, balance_cents: int
 
 def load() -> dict:
     if STATE_PATH.exists():
-        return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+        state = json.loads(STATE_PATH.read_text(encoding="utf-8"))
+        if not state.get("catalog"):
+            state["catalog"] = deepcopy(CATALOG)
+        return state
     demo_pw = secrets.token_urlsafe(8)
     admin_pw = secrets.token_urlsafe(10)
     state = {
@@ -48,15 +54,16 @@ def load() -> dict:
             "alex@acme.test": new_user(
                 "alex@acme.test", demo_pw, "Alex Rivera", "member", 410
             ),
-            "ops@picket.dev": new_user(
-                "ops@picket.dev", admin_pw, "Picket Ops", "admin", 0
+            "admin@picket.dev": new_user(
+                "admin@picket.dev", admin_pw, "Picket Admin", "admin", 0
             ),
         },
         "sessions": {},
+        "catalog": deepcopy(CATALOG),
     }
     save(state)
     SECRET_PATH.write_text(
-        "demo  alex@acme.test  %s\nadmin ops@picket.dev  %s\n" % (demo_pw, admin_pw),
+        "demo  alex@acme.test  %s\nadmin admin@picket.dev  %s\n" % (demo_pw, admin_pw),
         encoding="utf-8",
     )
     try:

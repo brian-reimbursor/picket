@@ -36,8 +36,8 @@ CATALOG = [
 ]
 
 
-def get(sku: str) -> dict | None:
-    for item in CATALOG:
+def get(sku: str, items: list[dict] | None = None) -> dict | None:
+    for item in items if items is not None else CATALOG:
         if item["sku"] == sku:
             return item
     return None

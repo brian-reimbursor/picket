@@ -37,6 +37,7 @@ nav a, nav button.link {
   padding: 0;
 }
 nav a:hover, nav button.link:hover { color: var(--ink); }
+[data-admin] { display: none; }
 h1 { font-size: 1.7rem; font-weight: 600; margin: 0 0 0.35rem; }
 .lede { color: var(--muted); margin: 0 0 1.4rem; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }

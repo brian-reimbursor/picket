@@ -30,6 +30,9 @@ function paintNav(user) {
   guest.forEach((el) => {
     el.style.display = user ? "none" : "";
   });
+  document.querySelectorAll("[data-admin]").forEach((el) => {
+    el.style.display = user && user.role === "admin" ? "" : "none";
+  });
   if (who && user) who.textContent = user.email;
 }
 
@@ -160,16 +163,91 @@ async function loadAdmin() {
   }
   const { ok, data } = await api("/api/admin/users");
   const body = document.getElementById("admin-body");
+  const cat = document.getElementById("catalog-body");
+  const orders = document.getElementById("order-body");
   if (!ok) {
-    if (body) body.innerHTML = `<tr><td colspan="4">${data.error || "forbidden"}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="5">${data.error || "forbidden"}</td></tr>`;
     return;
   }
   body.innerHTML = data.users
     .map(
       (u) =>
-        `<tr><td>${u.email}</td><td>${u.name}</td><td>${u.role}</td><td>${u.balance}</td></tr>`
+        `<tr>
+          <td>${u.email}</td>
+          <td>${u.name}</td>
+          <td>${u.role}</td>
+          <td>${u.balance}</td>
+          <td>
+            <input data-credit="${u.email}" type="number" min="1" step="1" placeholder="USD" style="width:5.5rem">
+            <button type="button" data-credit-go="${u.email}">Credit</button>
+          </td>
+        </tr>`
     )
     .join("");
+  body.querySelectorAll("[data-credit-go]").forEach((btn) => {
+    btn.addEventListener("click", () => adminCredit(btn.getAttribute("data-credit-go")));
+  });
+  if (cat) {
+    cat.innerHTML = (data.catalog || [])
+      .map(
+        (i) =>
+          `<tr>
+            <td>${i.sku}</td>
+            <td>${i.name}</td>
+            <td>${i.price}</td>
+            <td>
+              <input data-price="${i.sku}" type="number" min="0" step="1" value="${(i.price_cents / 100).toFixed(0)}" style="width:5.5rem">
+              <button type="button" data-price-go="${i.sku}">Set</button>
+            </td>
+          </tr>`
+      )
+      .join("");
+    cat.querySelectorAll("[data-price-go]").forEach((btn) => {
+      btn.addEventListener("click", () => adminPrice(btn.getAttribute("data-price-go")));
+    });
+  }
+  if (orders) {
+    const rows = data.orders || [];
+    orders.innerHTML = rows.length
+      ? rows
+          .map(
+            (row) =>
+              `<tr><td>${row.email}</td><td>${row.id}</td><td>${row.name}</td><td>${row.amount}</td></tr>`
+          )
+          .join("")
+      : `<tr><td colspan="4">No orders yet.</td></tr>`;
+  }
+}
+
+async function adminCredit(email) {
+  const input = document.querySelector('[data-credit="' + email + '"]');
+  const amount = input ? Number(input.value) : 0;
+  const { ok, data } = await api("/api/admin/credit", {
+    method: "POST",
+    body: JSON.stringify({ email, amount_usd: amount, memo: "ops credit" }),
+  });
+  const err = document.getElementById("admin-err");
+  if (!ok) {
+    if (err) err.textContent = data.error || "credit failed";
+    return;
+  }
+  loadAdmin();
+}
+
+async function adminPrice(sku) {
+  const input = document.querySelector('[data-price="' + sku + '"]');
+  const usd = input ? Number(input.value) : 0;
+  const nameCell = input && input.closest("tr") ? input.closest("tr").children[1].textContent : sku;
+  const { ok, data } = await api("/api/admin/catalog", {
+    method: "POST",
+    body: JSON.stringify({ sku, name: nameCell, price_cents: Math.round(usd * 100) }),
+  });
+  const err = document.getElementById("admin-err");
+  if (!ok) {
+    if (err) err.textContent = data.error || "update failed";
+    return;
+  }
+  loadAdmin();
 }
 
 window.picket = {

@@ -12,10 +12,6 @@ from pathlib import Path
 
 from picket.catalog import CATALOG
 
-# Card-on-file packs while hosted checkout is down. Daily cap is $100.
-CARD_PACKS_CENTS = (2500, 10000)
-CARD_DAILY_CAP_CENTS = 10000
-
 ROOT = Path(__file__).resolve().parents[2]
 STATE_PATH = ROOT / "state.json"
 LOG_PATH = ROOT / "grants.jsonl"
@@ -26,12 +22,16 @@ def now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def utc_day() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
-
 def password_hash(password: str, salt: str) -> str:
     return hashlib.sha256((salt + password).encode()).hexdigest()
+
+
+def welcome_coupon() -> dict:
+    return {
+        "code": "WELCOME-20",
+        "cents": 2000,
+        "label": "Welcome credit · $20.00 · one per workspace",
+    }
 
 
 def new_user(email: str, password: str, name: str, role: str, balance_cents: int) -> dict:
@@ -47,8 +47,7 @@ def new_user(email: str, password: str, name: str, role: str, balance_cents: int
         "promos": [],
         "cart": [],
         "pending_loads": [],
-        "card_day": "",
-        "card_cents_today": 0,
+        "coupons": [] if role == "admin" else [welcome_coupon()],
         "created": now(),
     }
 

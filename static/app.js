@@ -212,6 +212,18 @@ async function loadAccount() {
   if (bal) bal.textContent = user.balance;
   if (mail) mail.textContent = user.email;
   if (name) name.textContent = user.name;
+  const coupons = document.getElementById("coupon-body");
+  if (coupons) {
+    const rows = user.coupons || [];
+    coupons.innerHTML = rows.length
+      ? rows
+          .map((row) => {
+            const st = row.redeemed ? "redeemed" : "issued";
+            return `<tr><td>${row.code}</td><td>${row.amount}</td><td>${st}</td></tr>`;
+          })
+          .join("")
+      : `<tr><td colspan="3">No coupons.</td></tr>`;
+  }
   const body = document.getElementById("order-body");
   if (!body) return;
   const rows = user.orders || [];

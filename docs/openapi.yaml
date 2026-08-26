@@ -123,28 +123,28 @@ paths:
       responses:
         "201": { description: Purchased }
         "402": { description: Insufficient funds }
-  /api/billing/card:
+  /api/coupons/redeem:
     post:
       tags: [billing]
-      summary: Charge the card on file
+      summary: Redeem a workspace coupon
       description: |
-        Maintenance path while hosted checkout is down. Charges Visa ••4242.
-        `amount_usd` must be 25 or 100. At most $100 per UTC day per account.
-        The processor round-trip is slow; clients should not retry a request
-        that is still in flight.
+        Credits the wallet with a coupon issued to this account.
+        One redeem per code. Billing applies the credit in a short
+        round-trip; clients should not overlap in-flight redeems.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [amount_usd]
+              required: [code]
               properties:
-                amount_usd: { type: number, enum: [25, 100] }
+                code: { type: string, example: WELCOME-20 }
       responses:
         "200": { description: Wallet credited }
         "401": { description: Not signed in }
-        "409": { description: Daily cap already used }
+        "404": { description: Unknown coupon }
+        "409": { description: Already redeemed }
   /api/billing/grants:
     post:
       tags: [billing]

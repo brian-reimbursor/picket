@@ -15,8 +15,6 @@ from urllib.parse import urlparse
 
 from picket.catalog import dollars, get as catalog_get, public_items
 from picket.store import (
-    CARD_DAILY_CAP_CENTS,
-    CARD_PACKS_CENTS,
     ROOT,
     load,
     log_grant,
@@ -24,7 +22,7 @@ from picket.store import (
     now,
     password_hash,
     save,
-    utc_day,
+    welcome_coupon,
 )
 
 STATIC = ROOT / "static"
@@ -181,14 +179,16 @@ class Handler(BaseHTTPRequestHandler):
                     "balance": dollars(user["balance_cents"]),
                     "balance_cents": user["balance_cents"],
                     "cart": user.get("cart") or [],
-                    "card_on_file": "Visa ••4242",
-                    "daily_card_load": {
-                        "day": user.get("card_day") or utc_day(),
-                        "used_cents": int(user.get("card_cents_today") or 0)
-                        if (user.get("card_day") or "") == utc_day()
-                        else 0,
-                        "cap_cents": CARD_DAILY_CAP_CENTS,
-                    },
+                    "coupons": [
+                        {
+                            "code": c["code"],
+                            "amount": dollars(c["cents"]),
+                            "cents": c["cents"],
+                            "label": c.get("label") or c["code"],
+                            "redeemed": c["code"] in (user.get("promos") or []),
+                        }
+                        for c in (user.get("coupons") or [])
+                    ],
                     "orders": user.get("orders") or [],
                 },
             )
@@ -401,15 +401,9 @@ class Handler(BaseHTTPRequestHandler):
                 balance = user["balance_cents"]
             self._json(201, {"ok": True, "balance": dollars(balance)})
             return
-        if path == "/api/billing/card":
+        if path == "/api/coupons/redeem":
             payload = self._read_json() or {}
-            try:
-                cents = int(round(float(payload.get("amount_usd") or 0) * 100))
-            except (TypeError, ValueError):
-                cents = 0
-            if cents not in CARD_PACKS_CENTS:
-                self._json(400, {"error": "amount_usd must be 25 or 100"})
-                return
+            code = str(payload.get("code") or "").strip().upper()
             with LOCK:
                 st = load()
                 user = self._user(st)
@@ -417,23 +411,20 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(401, {"error": "sign in"})
                     return
                 email = user["email"]
-                day = utc_day()
-                if user.get("card_day") != day:
-                    user["card_day"] = day
-                    user["card_cents_today"] = 0
-                    save(st)
-                used = int(user.get("card_cents_today") or 0)
-                if used + cents > CARD_DAILY_CAP_CENTS:
-                    self._json(
-                        409,
-                        {
-                            "error": "daily card load cap",
-                            "used": dollars(used),
-                            "cap": dollars(CARD_DAILY_CAP_CENTS),
-                        },
-                    )
+                issued = None
+                for row in user.get("coupons") or []:
+                    if str(row.get("code") or "").upper() == code:
+                        issued = row
+                        break
+                if not issued:
+                    self._json(404, {"error": "unknown coupon"})
                     return
-            # Processor auth. The daily cap is not re-checked after this.
+                if code in (user.get("promos") or []):
+                    self._json(409, {"error": "coupon already redeemed"})
+                    return
+                cents = int(issued.get("cents") or 0)
+            # Billing applies the credit. The redeemed-flag is not
+            # re-checked after this round-trip.
             time.sleep(0.35)
             with LOCK:
                 st = load()
@@ -442,10 +433,10 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(401, {"error": "sign in"})
                     return
                 user["balance_cents"] = int(user["balance_cents"]) + cents
-                if user.get("card_day") != day:
-                    user["card_day"] = day
-                    user["card_cents_today"] = 0
-                user["card_cents_today"] = int(user.get("card_cents_today") or 0) + cents
+                used = list(user.get("promos") or [])
+                if code not in used:
+                    used.append(code)
+                user["promos"] = used
                 save(st)
                 total = user["balance_cents"]
             log_grant(
@@ -456,10 +447,14 @@ class Handler(BaseHTTPRequestHandler):
                     "account": email,
                     "added_cents": cents,
                     "balance": dollars(total),
-                    "source": "card-on-file",
+                    "source": "coupon",
+                    "code": code,
                 }
             )
-            self._json(200, {"ok": True, "balance": dollars(total), "added": dollars(cents)})
+            self._json(
+                200,
+                {"ok": True, "balance": dollars(total), "added": dollars(cents), "code": code},
+            )
             return
         if path == "/api/admin/credit":
             payload = self._read_json() or {}
@@ -542,8 +537,7 @@ class Handler(BaseHTTPRequestHandler):
                 target["cart"] = []
                 target["promos"] = []
                 target["pending_loads"] = []
-                target["card_day"] = ""
-                target["card_cents_today"] = 0
+                target["coupons"] = [] if target.get("role") == "admin" else [welcome_coupon()]
                 st["sessions"] = {
                     tok: who for tok, who in st.get("sessions", {}).items() if who != email
                 }

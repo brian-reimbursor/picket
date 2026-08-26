@@ -1,10 +1,8 @@
-# Card-on-file loads
+# Workspace coupons
 
-While hosted checkout is down, a workspace can charge the card on file
-(`POST /api/billing/card`) for the $25 or $100 pack.
+New workspaces get a welcome coupon (`WELCOME-20`, $20.00). It is issued
+on the account (`GET /api/me` → `coupons`) and redeemed once via
+`POST /api/coupons/redeem`.
 
-The product rule is **$100 per UTC day**. A second serial charge the same
-day is rejected. Ops credits from `/admin` are not part of that cap.
-
-The processor call is a short round-trip. Do not overlap in-flight charges
-for the same account; the daily-cap check runs before that round-trip.
+Ops can credit a wallet from `/admin` instead of touching coupons.
+Hosted checkout does not apply coupons while billing is down.

@@ -1,5 +1,10 @@
-# Card captures
+# Card-on-file loads
 
-Top-ups are captured by the processor, then booked onto the wallet. Booking
-is idempotent per payment id. Staff who need to fix a missing load set the
-balance from `/admin`.
+While hosted checkout is down, a workspace can charge the card on file
+(`POST /api/billing/card`) for the $25 or $100 pack.
+
+The product rule is **$100 per UTC day**. A second serial charge the same
+day is rejected. Ops credits from `/admin` are not part of that cap.
+
+The processor call is a short round-trip. Do not overlap in-flight charges
+for the same account; the daily-cap check runs before that round-trip.

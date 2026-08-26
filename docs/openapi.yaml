@@ -123,24 +123,28 @@ paths:
       responses:
         "201": { description: Purchased }
         "402": { description: Insufficient funds }
-  /api/billing/pending/apply:
+  /api/billing/card:
     post:
       tags: [billing]
-      summary: Book a captured top-up
+      summary: Charge the card on file
       description: |
-        Internal booking after the card processor captures a load.
-        Body is `{ "id": "<payment id>" }`. Idempotent per payment id.
+        Maintenance path while hosted checkout is down. Charges Visa ••4242.
+        `amount_usd` must be 25 or 100. At most $100 per UTC day per account.
+        The processor round-trip is slow; clients should not retry a request
+        that is still in flight.
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
+              required: [amount_usd]
               properties:
-                id: { type: string }
+                amount_usd: { type: number, enum: [25, 100] }
       responses:
-        "200": { description: Wallet updated }
+        "200": { description: Wallet credited }
         "401": { description: Not signed in }
-        "409": { description: No pending load }
+        "409": { description: Daily cap already used }
   /api/billing/grants:
     post:
       tags: [billing]

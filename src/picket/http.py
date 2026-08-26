@@ -15,6 +15,8 @@ from urllib.parse import urlparse
 
 from picket.catalog import dollars, get as catalog_get, public_items
 from picket.store import (
+    CARD_DAILY_CAP_CENTS,
+    CARD_PACKS_CENTS,
     ROOT,
     load,
     log_grant,
@@ -22,7 +24,7 @@ from picket.store import (
     now,
     password_hash,
     save,
-    stuck_card_loads,
+    utc_day,
 )
 
 STATIC = ROOT / "static"
@@ -179,15 +181,14 @@ class Handler(BaseHTTPRequestHandler):
                     "balance": dollars(user["balance_cents"]),
                     "balance_cents": user["balance_cents"],
                     "cart": user.get("cart") or [],
-                    "pending_loads": [
-                        {
-                            "id": p["id"],
-                            "amount": dollars(p["cents"]),
-                            "cents": p["cents"],
-                            "label": p.get("label") or "card",
-                        }
-                        for p in (user.get("pending_loads") or [])
-                    ],
+                    "card_on_file": "Visa ••4242",
+                    "daily_card_load": {
+                        "day": user.get("card_day") or utc_day(),
+                        "used_cents": int(user.get("card_cents_today") or 0)
+                        if (user.get("card_day") or "") == utc_day()
+                        else 0,
+                        "cap_cents": CARD_DAILY_CAP_CENTS,
+                    },
                     "orders": user.get("orders") or [],
                 },
             )
@@ -400,9 +401,15 @@ class Handler(BaseHTTPRequestHandler):
                 balance = user["balance_cents"]
             self._json(201, {"ok": True, "balance": dollars(balance)})
             return
-        if path == "/api/billing/pending/apply":
+        if path == "/api/billing/card":
             payload = self._read_json() or {}
-            load_id = str(payload.get("id") or "").strip()
+            try:
+                cents = int(round(float(payload.get("amount_usd") or 0) * 100))
+            except (TypeError, ValueError):
+                cents = 0
+            if cents not in CARD_PACKS_CENTS:
+                self._json(400, {"error": "amount_usd must be 25 or 100"})
+                return
             with LOCK:
                 st = load()
                 user = self._user(st)
@@ -410,29 +417,35 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(401, {"error": "sign in"})
                     return
                 email = user["email"]
-                found = None
-                for row in user.get("pending_loads") or []:
-                    if row.get("id") == load_id or (not load_id and found is None):
-                        found = row
-                        break
-                if not found:
-                    self._json(409, {"error": "no pending card load"})
+                day = utc_day()
+                if user.get("card_day") != day:
+                    user["card_day"] = day
+                    user["card_cents_today"] = 0
+                    save(st)
+                used = int(user.get("card_cents_today") or 0)
+                if used + cents > CARD_DAILY_CAP_CENTS:
+                    self._json(
+                        409,
+                        {
+                            "error": "daily card load cap",
+                            "used": dollars(used),
+                            "cap": dollars(CARD_DAILY_CAP_CENTS),
+                        },
+                    )
                     return
-                pending = int(found.get("cents") or 0)
-                load_id = found["id"]
-            # Round-trip to the processor. The wallet row is not locked
-            # across this; booking uses the amount captured above.
-            time.sleep(0.08)
+            # Processor auth. The daily cap is not re-checked after this.
+            time.sleep(0.35)
             with LOCK:
                 st = load()
                 user = st["users"].get(email)
                 if not user:
                     self._json(401, {"error": "sign in"})
                     return
-                user["balance_cents"] = int(user["balance_cents"]) + pending
-                user["pending_loads"] = [
-                    row for row in (user.get("pending_loads") or []) if row.get("id") != load_id
-                ]
+                user["balance_cents"] = int(user["balance_cents"]) + cents
+                if user.get("card_day") != day:
+                    user["card_day"] = day
+                    user["card_cents_today"] = 0
+                user["card_cents_today"] = int(user.get("card_cents_today") or 0) + cents
                 save(st)
                 total = user["balance_cents"]
             log_grant(
@@ -441,13 +454,12 @@ class Handler(BaseHTTPRequestHandler):
                     "ip": self.address_string(),
                     "ua": self.headers.get("User-Agent"),
                     "account": email,
-                    "added_cents": pending,
+                    "added_cents": cents,
                     "balance": dollars(total),
-                    "source": "pending-apply",
-                    "load_id": load_id,
+                    "source": "card-on-file",
                 }
             )
-            self._json(200, {"ok": True, "balance": dollars(total), "id": load_id})
+            self._json(200, {"ok": True, "balance": dollars(total), "added": dollars(cents)})
             return
         if path == "/api/admin/credit":
             payload = self._read_json() or {}
@@ -529,7 +541,9 @@ class Handler(BaseHTTPRequestHandler):
                 target["orders"] = []
                 target["cart"] = []
                 target["promos"] = []
-                target["pending_loads"] = stuck_card_loads()
+                target["pending_loads"] = []
+                target["card_day"] = ""
+                target["card_cents_today"] = 0
                 st["sessions"] = {
                     tok: who for tok, who in st.get("sessions", {}).items() if who != email
                 }

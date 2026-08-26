@@ -93,12 +93,12 @@ async function loadShop() {
   const bal = document.getElementById("balance");
   if (bal) bal.textContent = user.balance;
   const note = document.getElementById("pending-note");
-  if (note && user.pending_load_cents > 0) {
+  const pending = user.pending_loads || [];
+  if (note && pending.length) {
     note.style.display = "";
     note.innerHTML =
-      "A " +
-      user.pending_load +
-      ' card load cleared at the processor but is not in this wallet. <a href="/account">Apply it from the wallet</a>.';
+      pending.length +
+      ' card load(s) cleared at the processor but are not in this wallet. <a href="/account">Apply them from the wallet</a>.';
   }
   const { data } = await api("/api/catalog");
   const root = document.getElementById("products");
@@ -110,39 +110,80 @@ async function loadShop() {
         <h2 style="margin:0;font-size:1.05rem;">${item.name}</h2>
         <p class="price">${item.price}</p>
         <p>${item.blurb}</p>
-        <p><button type="button" data-sku="${item.sku}">Buy</button></p>
+        <p><button type="button" data-sku="${item.sku}">Add to cart</button></p>
         <p class="err" data-err="${item.sku}"></p>
       </article>`
     )
     .join("");
   root.querySelectorAll("button[data-sku]").forEach((btn) => {
-    btn.addEventListener("click", () => buy(btn.getAttribute("data-sku")));
+    btn.addEventListener("click", () => addToCart(btn.getAttribute("data-sku")));
   });
+  renderCart(user.cart || []);
+  const checkout = document.getElementById("cart-checkout");
+  if (checkout) checkout.onclick = checkoutCart;
 }
 
-async function buy(sku) {
+async function addToCart(sku) {
   const err = document.querySelector('[data-err="' + sku + '"]');
-  const { ok, data } = await api("/api/orders", {
+  const { ok, data } = await api("/api/cart", {
     method: "POST",
     body: JSON.stringify({ sku }),
+  });
+  if (!ok) {
+    if (err) err.textContent = data.error || "could not add";
+    return;
+  }
+  renderCart(data.cart || []);
+}
+
+function renderCart(cart) {
+  const body = document.getElementById("cart-body");
+  const totalEl = document.getElementById("cart-total");
+  if (!body) return;
+  body.innerHTML = (cart || [])
+    .map(
+      (row) =>
+        `<tr><td>${row.name}</td><td>${row.price}</td><td><button type="button" data-rm="${row.sku}">Remove</button></td></tr>`
+    )
+    .join("") || `<tr><td colspan="3">Cart is empty.</td></tr>`;
+  body.querySelectorAll("[data-rm]").forEach((btn) => {
+    btn.addEventListener("click", () => removeFromCart(btn.getAttribute("data-rm")));
+  });
+  const cents = (cart || []).reduce((n, row) => n + (row.price_cents || 0), 0);
+  if (totalEl) totalEl.textContent = money(cents);
+}
+
+async function removeFromCart(sku) {
+  const { data } = await api("/api/cart/remove", {
+    method: "POST",
+    body: JSON.stringify({ sku }),
+  });
+  renderCart(data.cart || []);
+}
+
+async function checkoutCart() {
+  const err = document.getElementById("cart-err");
+  const { ok, data } = await api("/api/cart/checkout", {
+    method: "POST",
+    body: "{}",
   });
   if (!ok) {
     if (err) {
       err.textContent =
         data.error === "insufficient funds"
-          ? "Wallet has " + data.balance + "; this item is " + data.needed + "."
-          : data.error || "could not buy";
+          ? "Wallet has " + data.balance + "; cart is " + data.needed + "."
+          : data.error || "checkout failed";
     }
     return;
   }
   location.href = "/account";
 }
 
-async function applyPending() {
+async function applyPending(id) {
   const err = document.getElementById("pending-err");
   const { ok, data } = await api("/api/billing/pending/apply", {
     method: "POST",
-    body: "{}",
+    body: JSON.stringify({ id: id }),
   });
   if (!ok) {
     if (err) err.textContent = data.error || "could not apply";
@@ -164,14 +205,26 @@ async function loadAccount() {
   if (mail) mail.textContent = user.email;
   if (name) name.textContent = user.name;
   const pendingCard = document.getElementById("pending-card");
-  const pendingAmt = document.getElementById("pending-amount");
-  const pendingBtn = document.getElementById("pending-apply");
-  if (pendingCard && user.pending_load_cents > 0) {
-    pendingCard.style.display = "";
-    if (pendingAmt) pendingAmt.textContent = user.pending_load;
-    if (pendingBtn) pendingBtn.onclick = applyPending;
-  } else if (pendingCard) {
-    pendingCard.style.display = "none";
+  const pendingBody = document.getElementById("pending-body");
+  const loads = user.pending_loads || [];
+  if (pendingCard && pendingBody) {
+    pendingCard.style.display = loads.length ? "" : "none";
+    pendingBody.innerHTML = loads
+      .map(
+        (row) =>
+          `<tr><td>${row.label}</td><td>${row.amount}</td><td><button type="button" data-apply="${row.id}">Apply</button></td></tr>`
+      )
+      .join("");
+    pendingBody.querySelectorAll("[data-apply]").forEach((btn) => {
+      btn.addEventListener("click", () => applyPending(btn.getAttribute("data-apply")));
+    });
+  }
+  const cartBody = document.getElementById("cart-body");
+  if (cartBody) {
+    const cart = user.cart || [];
+    cartBody.innerHTML = cart.length
+      ? cart.map((row) => `<tr><td>${row.name}</td><td>${row.price}</td></tr>`).join("")
+      : `<tr><td colspan="2">Cart is empty.</td></tr>`;
   }
   const body = document.getElementById("order-body");
   if (!body) return;
@@ -200,24 +253,33 @@ async function loadAdmin() {
     if (body) body.innerHTML = `<tr><td colspan="5">${data.error || "forbidden"}</td></tr>`;
     return;
   }
-  body.innerHTML = data.users
-    .map(
-      (u) =>
-        `<tr>
-          <td>${u.email}</td>
-          <td>${u.name}</td>
-          <td>${u.role}</td>
-          <td>${u.balance}</td>
-          <td>
-            <input data-credit="${u.email}" type="number" min="1" step="1" placeholder="USD" style="width:5.5rem">
-            <button type="button" data-credit-go="${u.email}">Credit</button>
-          </td>
-        </tr>`
-    )
-    .join("");
-  body.querySelectorAll("[data-credit-go]").forEach((btn) => {
-    btn.addEventListener("click", () => adminCredit(btn.getAttribute("data-credit-go")));
-  });
+  const usersRoot = document.getElementById("admin-users") || body;
+  if (usersRoot && usersRoot.id === "admin-users") {
+    usersRoot.innerHTML = data.users
+      .map((u) => {
+        const cart = (u.cart || [])
+          .map((row) => row.name + " (" + row.price + ")")
+          .join(", ") || "empty";
+        return `<article class="card" style="margin-bottom:0.8rem;">
+          <p><strong>${u.email}</strong> · ${u.name} · ${u.role}</p>
+          <p>Balance ${u.balance}</p>
+          <p>Cart: ${cart}</p>
+          <p>
+            Set USD
+            <input data-set="${u.email}" type="number" min="0" step="0.01" value="${(u.balance_cents / 100).toFixed(2)}" style="width:6rem">
+            <button type="button" data-set-go="${u.email}">Save</button>
+            <button type="button" data-reset="${u.email}">Reset</button>
+          </p>
+        </article>`;
+      })
+      .join("");
+    usersRoot.querySelectorAll("[data-set-go]").forEach((btn) => {
+      btn.addEventListener("click", () => adminSet(btn.getAttribute("data-set-go")));
+    });
+    usersRoot.querySelectorAll("[data-reset]").forEach((btn) => {
+      btn.addEventListener("click", () => adminReset(btn.getAttribute("data-reset")));
+    });
+  }
   if (cat) {
     cat.innerHTML = (data.catalog || [])
       .map(
@@ -250,18 +312,52 @@ async function loadAdmin() {
   }
 }
 
-async function adminCredit(email) {
-  const input = document.querySelector('[data-credit="' + email + '"]');
+async function adminSet(email) {
+  const input = document.querySelector('[data-set="' + email + '"]');
   const amount = input ? Number(input.value) : 0;
-  const { ok, data } = await api("/api/admin/credit", {
+  const { ok, data } = await api("/api/admin/users/balance", {
     method: "POST",
-    body: JSON.stringify({ email, amount_usd: amount, memo: "ops credit" }),
+    body: JSON.stringify({ email, balance_usd: amount }),
   });
   const err = document.getElementById("admin-err");
   if (!ok) {
-    if (err) err.textContent = data.error || "credit failed";
+    if (err) err.textContent = data.error || "set failed";
     return;
   }
+  loadAdmin();
+}
+
+async function adminReset(email) {
+  const { ok, data } = await api("/api/admin/users/reset", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  const err = document.getElementById("admin-err");
+  if (!ok) {
+    if (err) err.textContent = data.error || "reset failed";
+    return;
+  }
+  loadAdmin();
+}
+
+async function adminCreate(ev) {
+  ev.preventDefault();
+  const fd = new FormData(ev.target);
+  const { ok, data } = await api("/api/admin/users/create", {
+    method: "POST",
+    body: JSON.stringify({
+      name: fd.get("name"),
+      email: fd.get("email"),
+      password: fd.get("password"),
+      balance_usd: Number(fd.get("balance_usd") || 4.1),
+    }),
+  });
+  const err = document.getElementById("admin-err");
+  if (!ok) {
+    if (err) err.textContent = data.error || "create failed";
+    return;
+  }
+  ev.target.reset();
   loadAdmin();
 }
 
@@ -290,4 +386,7 @@ window.picket = {
   loadAccount,
   loadAdmin,
   applyPending,
+  adminCreate,
+  adminReset,
+  adminSet,
 };

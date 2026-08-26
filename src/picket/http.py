@@ -14,7 +14,16 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 from picket.catalog import dollars, get as catalog_get, public_items
-from picket.store import ROOT, load, log_grant, new_user, now, password_hash, save
+from picket.store import (
+    ROOT,
+    load,
+    log_grant,
+    new_user,
+    now,
+    password_hash,
+    save,
+    stuck_card_loads,
+)
 
 STATIC = ROOT / "static"
 LOCK = threading.Lock()
@@ -168,8 +177,16 @@ class Handler(BaseHTTPRequestHandler):
                     "role": user["role"],
                     "balance": dollars(user["balance_cents"]),
                     "balance_cents": user["balance_cents"],
-                    "pending_load": dollars(int(user.get("pending_load_cents") or 0)),
-                    "pending_load_cents": int(user.get("pending_load_cents") or 0),
+                    "cart": user.get("cart") or [],
+                    "pending_loads": [
+                        {
+                            "id": p["id"],
+                            "amount": dollars(p["cents"]),
+                            "cents": p["cents"],
+                            "label": p.get("label") or "card",
+                        }
+                        for p in (user.get("pending_loads") or [])
+                    ],
                     "orders": user.get("orders") or [],
                 },
             )
@@ -197,7 +214,9 @@ class Handler(BaseHTTPRequestHandler):
                             "name": u["name"],
                             "role": u["role"],
                             "balance": dollars(u["balance_cents"]),
-                            "promos": u.get("promos") or [],
+                            "balance_cents": u["balance_cents"],
+                            "cart": u.get("cart") or [],
+                            "pending_loads": u.get("pending_loads") or [],
                             "orders": u.get("orders") or [],
                         }
                         for u in users.values()
@@ -302,7 +321,87 @@ class Handler(BaseHTTPRequestHandler):
                 balance = user["balance_cents"]
             self._json(201, {"order": order, "balance": dollars(balance)})
             return
+        if path == "/api/cart":
+            payload = self._read_json() or {}
+            sku = str(payload.get("sku") or "")
+            with LOCK:
+                st = load()
+                user = self._user(st)
+                if not user:
+                    self._json(401, {"error": "sign in"})
+                    return
+                item = catalog_get(sku, self._catalog(st))
+                if not item:
+                    self._json(404, {"error": "unknown sku"})
+                    return
+                cart = user.setdefault("cart", [])
+                cart.append(
+                    {
+                        "sku": item["sku"],
+                        "name": item["name"],
+                        "price": dollars(item["price_cents"]),
+                        "price_cents": item["price_cents"],
+                    }
+                )
+                save(st)
+            self._json(200, {"ok": True, "cart": cart})
+            return
+        if path == "/api/cart/remove":
+            payload = self._read_json() or {}
+            sku = str(payload.get("sku") or "")
+            with LOCK:
+                st = load()
+                user = self._user(st)
+                if not user:
+                    self._json(401, {"error": "sign in"})
+                    return
+                cart = user.get("cart") or []
+                user["cart"] = [row for row in cart if row.get("sku") != sku]
+                save(st)
+            self._json(200, {"ok": True, "cart": user["cart"]})
+            return
+        if path == "/api/cart/checkout":
+            with LOCK:
+                st = load()
+                user = self._user(st)
+                if not user:
+                    self._json(401, {"error": "sign in"})
+                    return
+                cart = list(user.get("cart") or [])
+                total = sum(int(row.get("price_cents") or 0) for row in cart)
+                if not cart:
+                    self._json(400, {"error": "cart empty"})
+                    return
+                if user["balance_cents"] < total:
+                    self._json(
+                        402,
+                        {
+                            "error": "insufficient funds",
+                            "balance": dollars(user["balance_cents"]),
+                            "needed": dollars(total),
+                        },
+                    )
+                    return
+                user["balance_cents"] -= total
+                for row in cart:
+                    user.setdefault("orders", []).insert(
+                        0,
+                        {
+                            "id": "PO-%s" % secrets.token_hex(3).upper(),
+                            "sku": row.get("sku"),
+                            "name": row.get("name"),
+                            "amount": row.get("price") or dollars(row.get("price_cents") or 0),
+                            "when": now(),
+                        },
+                    )
+                user["cart"] = []
+                save(st)
+                balance = user["balance_cents"]
+            self._json(201, {"ok": True, "balance": dollars(balance)})
+            return
         if path == "/api/billing/pending/apply":
+            payload = self._read_json() or {}
+            load_id = str(payload.get("id") or "").strip()
             with LOCK:
                 st = load()
                 user = self._user(st)
@@ -310,10 +409,16 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(401, {"error": "sign in"})
                     return
                 email = user["email"]
-                pending = int(user.get("pending_load_cents") or 0)
-                if pending < 1:
+                found = None
+                for row in user.get("pending_loads") or []:
+                    if row.get("id") == load_id or (not load_id and found is None):
+                        found = row
+                        break
+                if not found:
                     self._json(409, {"error": "no pending card load"})
                     return
+                pending = int(found.get("cents") or 0)
+                load_id = found["id"]
             # Card processor confirm — do not hold the wallet lock.
             time.sleep(0.4)
             with LOCK:
@@ -323,7 +428,9 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(401, {"error": "sign in"})
                     return
                 user["balance_cents"] = int(user["balance_cents"]) + pending
-                user["pending_load_cents"] = 0
+                user["pending_loads"] = [
+                    row for row in (user.get("pending_loads") or []) if row.get("id") != load_id
+                ]
                 save(st)
                 total = user["balance_cents"]
             log_grant(
@@ -335,9 +442,10 @@ class Handler(BaseHTTPRequestHandler):
                     "added_cents": pending,
                     "balance": dollars(total),
                     "source": "pending-apply",
+                    "load_id": load_id,
                 }
             )
-            self._json(200, {"ok": True, "balance": dollars(total)})
+            self._json(200, {"ok": True, "balance": dollars(total), "id": load_id})
             return
         if path == "/api/admin/credit":
             payload = self._read_json() or {}
@@ -375,6 +483,79 @@ class Handler(BaseHTTPRequestHandler):
                 }
             )
             self._json(200, {"ok": True, "email": email, "balance": dollars(total)})
+            return
+        if path == "/api/admin/users/create":
+            payload = self._read_json() or {}
+            email = str(payload.get("email") or "").strip().lower()
+            password = str(payload.get("password") or "")
+            name = str(payload.get("name") or "").strip() or email.split("@")[0]
+            try:
+                balance_cents = int(round(float(payload.get("balance_usd") or 4.10) * 100))
+            except (TypeError, ValueError):
+                balance_cents = 410
+            if "@" not in email or len(password) < 6:
+                self._json(400, {"error": "email and password (6+ chars) required"})
+                return
+            with LOCK:
+                st = load()
+                if not self._require_admin(st):
+                    self._json(403, {"error": "admin only"})
+                    return
+                if email in st["users"]:
+                    self._json(409, {"error": "account exists"})
+                    return
+                st["users"][email] = new_user(email, password, name, "member", balance_cents)
+                save(st)
+            self._json(201, {"ok": True, "email": email})
+            return
+        if path == "/api/admin/users/reset":
+            payload = self._read_json() or {}
+            email = str(payload.get("email") or "").strip().lower()
+            with LOCK:
+                st = load()
+                if not self._require_admin(st):
+                    self._json(403, {"error": "admin only"})
+                    return
+                target = st["users"].get(email)
+                if not target:
+                    self._json(404, {"error": "unknown account"})
+                    return
+                if target.get("role") == "admin":
+                    self._json(400, {"error": "will not reset admin"})
+                    return
+                target["balance_cents"] = 410
+                target["orders"] = []
+                target["cart"] = []
+                target["promos"] = []
+                target["pending_loads"] = stuck_card_loads()
+                st["sessions"] = {
+                    tok: who for tok, who in st.get("sessions", {}).items() if who != email
+                }
+                save(st)
+            self._json(200, {"ok": True, "email": email, "balance": "$4.10"})
+            return
+        if path == "/api/admin/users/balance":
+            payload = self._read_json() or {}
+            email = str(payload.get("email") or "").strip().lower()
+            try:
+                balance_cents = int(round(float(payload.get("balance_usd")) * 100))
+            except (TypeError, ValueError):
+                balance_cents = -1
+            if not email or balance_cents < 0:
+                self._json(400, {"error": "email and balance_usd required"})
+                return
+            with LOCK:
+                st = load()
+                if not self._require_admin(st):
+                    self._json(403, {"error": "admin only"})
+                    return
+                target = st["users"].get(email)
+                if not target:
+                    self._json(404, {"error": "unknown account"})
+                    return
+                target["balance_cents"] = balance_cents
+                save(st)
+            self._json(200, {"ok": True, "email": email, "balance": dollars(balance_cents)})
             return
         if path == "/api/admin/catalog":
             payload = self._read_json() or {}

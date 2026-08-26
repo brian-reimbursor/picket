@@ -37,9 +37,19 @@ def new_user(email: str, password: str, name: str, role: str, balance_cents: int
         "balance_cents": balance_cents,
         "orders": [],
         "promos": [],
-        "pending_load_cents": 0,
+        "cart": [],
+        "pending_loads": [],
         "created": now(),
     }
+
+
+def stuck_card_loads() -> list[dict]:
+    """Three $50 captures from a flaky checkout retry."""
+    return [
+        {"id": "pi_%s" % secrets.token_hex(3), "cents": 5000, "label": "Visa ••4242"},
+        {"id": "pi_%s" % secrets.token_hex(3), "cents": 5000, "label": "Visa ••4242"},
+        {"id": "pi_%s" % secrets.token_hex(3), "cents": 5000, "label": "Visa ••4242"},
+    ]
 
 
 def load() -> dict:

@@ -90,9 +90,16 @@ paths:
       tags: [billing]
       summary: Apply a stuck card load
       description: |
-        Moves a processor-cleared load into the wallet when checkout
-        did not finish. One pending load per workspace. If there is
-        nothing pending, returns 409.
+        Moves one processor-cleared load into the wallet when checkout
+        did not finish. Pass `id` from `/api/me` pending_loads. Each id
+        should credit once.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id: { type: string }
       responses:
         "200": { description: Wallet updated }
         "401": { description: Not signed in }

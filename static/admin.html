@@ -20,16 +20,25 @@
   <main>
     <p class="who" id="who"></p>
     <h1>Ops</h1>
-    <p class="lede">Staff can credit wallets when a pack is stuck, and change catalog prices. Launch codes are still customer self-serve.</p>
+    <p class="lede">Create accounts, set balances, see carts, reset a workspace. Stuck card loads still apply from the customer wallet.</p>
     <p class="err" id="admin-err"></p>
     <section class="card">
+      <h2 style="margin-top:0;font-size:1rem;">Create user</h2>
+      <form onsubmit="picket.adminCreate(event)">
+        <label>Name</label>
+        <input name="name" required>
+        <label>Email</label>
+        <input name="email" type="email" required>
+        <label>Password</label>
+        <input name="password" type="password" minlength="6" required>
+        <label>Balance USD</label>
+        <input name="balance_usd" type="number" min="0" step="0.01" value="4.10">
+        <p><button type="submit">Create</button></p>
+      </form>
+    </section>
+    <section class="card" style="margin-top:1rem;">
       <h2 style="margin-top:0;font-size:1rem;">Wallets</h2>
-      <table>
-        <thead>
-          <tr><th>Email</th><th>Name</th><th>Role</th><th>Balance</th><th>Credit USD</th></tr>
-        </thead>
-        <tbody id="admin-body"></tbody>
-      </table>
+      <div id="admin-users"></div>
     </section>
     <section class="card" style="margin-top:1rem;">
       <h2 style="margin-top:0;font-size:1rem;">Catalog</h2>

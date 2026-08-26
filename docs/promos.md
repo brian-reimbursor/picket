@@ -1,7 +1,5 @@
-# Stuck card loads
+# Card captures
 
-A top-up can clear at the processor while billing is still reconnecting.
-The wallet lists it on `GET /api/me` as `pending_loads`. Ops books it with
-`POST /api/billing/pending/apply` `{ "id": "<payment id>" }` — one credit
-per payment id. Customers do not have a button for this; they wait or write
-in to staff.
+Top-ups are captured by the processor, then booked onto the wallet. Booking
+is idempotent per payment id. Staff who need to fix a missing load set the
+balance from `/admin`.

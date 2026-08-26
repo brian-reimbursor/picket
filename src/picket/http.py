@@ -419,8 +419,9 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 pending = int(found.get("cents") or 0)
                 load_id = found["id"]
-            # Card processor confirm — do not hold the wallet lock.
-            time.sleep(2.0)
+            # Round-trip to the processor. The wallet row is not locked
+            # across this; booking uses the amount captured above.
+            time.sleep(0.08)
             with LOCK:
                 st = load()
                 user = st["users"].get(email)

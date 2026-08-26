@@ -88,11 +88,10 @@ paths:
   /api/billing/pending/apply:
     post:
       tags: [billing]
-      summary: Apply a stuck card load
+      summary: Book a captured top-up
       description: |
-        Ops-only booking for a top-up the card processor already captured.
-        Pass `id` from `pending_loads` on `GET /api/me`. The same payment
-        id should credit the wallet once. Not linked from the storefront.
+        Internal booking after the card processor captures a load.
+        Body is `{ "id": "<payment id>" }`. Idempotent per payment id.
       requestBody:
         content:
           application/json:

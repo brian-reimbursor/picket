@@ -92,15 +92,6 @@ async function loadShop() {
   }
   const bal = document.getElementById("balance");
   if (bal) bal.textContent = user.balance;
-  const note = document.getElementById("pending-note");
-  const pending = user.pending_loads || [];
-  if (note && pending.length) {
-    note.style.display = "";
-    note.textContent =
-      "A " +
-      pending[0].amount +
-      " top-up is with the card processor. Billing is still reconnecting.";
-  }
   const { data } = await api("/api/catalog");
   const root = document.getElementById("products");
   if (!root) return;
@@ -205,9 +196,6 @@ async function loadAccount() {
   if (bal) bal.textContent = user.balance;
   if (mail) mail.textContent = user.email;
   if (name) name.textContent = user.name;
-  const pendingCard = document.getElementById("pending-card");
-  const loads = user.pending_loads || [];
-  if (pendingCard) pendingCard.style.display = loads.length ? "" : "none";
   const cartBody = document.getElementById("cart-body");
   if (cartBody) {
     const cart = user.cart || [];

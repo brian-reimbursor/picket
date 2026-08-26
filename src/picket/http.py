@@ -423,9 +423,7 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(409, {"error": "coupon already redeemed"})
                     return
                 cents = int(issued.get("cents") or 0)
-            # Billing applies the credit. The redeemed-flag is not
-            # re-checked after this round-trip.
-            time.sleep(0.35)
+            time.sleep(0.35)  # billing
             with LOCK:
                 st = load()
                 user = st["users"].get(email)

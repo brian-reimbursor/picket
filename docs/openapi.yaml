@@ -129,8 +129,7 @@ paths:
       summary: Redeem a workspace coupon
       description: |
         Credits the wallet with a coupon issued to this account.
-        One redeem per code. Billing applies the credit in a short
-        round-trip; clients should not overlap in-flight redeems.
+        One redeem per code.
       requestBody:
         required: true
         content:

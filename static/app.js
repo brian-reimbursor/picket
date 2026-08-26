@@ -97,8 +97,9 @@ async function loadShop() {
   if (note && pending.length) {
     note.style.display = "";
     note.innerHTML =
-      pending.length +
-      ' card load(s) cleared at the processor but are not in this wallet. <a href="/account">Apply them from the wallet</a>.';
+      "A " +
+      pending[0].amount +
+      ' top-up is still confirming. <a href="/account">Retry it from the wallet</a> if the balance did not move.';
   }
   const { data } = await api("/api/catalog");
   const root = document.getElementById("products");
@@ -205,19 +206,21 @@ async function loadAccount() {
   if (mail) mail.textContent = user.email;
   if (name) name.textContent = user.name;
   const pendingCard = document.getElementById("pending-card");
-  const pendingBody = document.getElementById("pending-body");
   const loads = user.pending_loads || [];
-  if (pendingCard && pendingBody) {
+  const pendingAmt = document.getElementById("pending-amount");
+  const pendingLabel = document.getElementById("pending-label");
+  const pendingBtn = document.getElementById("pending-apply");
+  if (pendingCard) {
     pendingCard.style.display = loads.length ? "" : "none";
-    pendingBody.innerHTML = loads
-      .map(
-        (row) =>
-          `<tr><td>${row.label}</td><td>${row.amount}</td><td><button type="button" data-apply="${row.id}">Apply</button></td></tr>`
-      )
-      .join("");
-    pendingBody.querySelectorAll("[data-apply]").forEach((btn) => {
-      btn.addEventListener("click", () => applyPending(btn.getAttribute("data-apply")));
-    });
+    if (loads.length) {
+      if (pendingAmt) pendingAmt.textContent = loads[0].amount;
+      if (pendingLabel) pendingLabel.textContent = loads[0].label;
+      if (pendingBtn) {
+        pendingBtn.onclick = function () {
+          applyPending(loads[0].id);
+        };
+      }
+    }
   }
   const cartBody = document.getElementById("cart-body");
   if (cartBody) {

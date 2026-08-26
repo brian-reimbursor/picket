@@ -90,9 +90,9 @@ paths:
       tags: [billing]
       summary: Apply a stuck card load
       description: |
-        Moves one processor-cleared load into the wallet when checkout
-        did not finish. Pass `id` from `/api/me` pending_loads. Each id
-        should credit once.
+        Retry for a top-up the card processor already captured.
+        Pass `id` from `/api/me` pending_loads. The same payment id
+        should credit the wallet once.
       requestBody:
         content:
           application/json:

@@ -44,11 +44,13 @@ def new_user(email: str, password: str, name: str, role: str, balance_cents: int
 
 
 def stuck_card_loads() -> list[dict]:
-    """Three $50 captures from a flaky checkout retry."""
+    """One $100 top-up the processor captured; wallet confirm is still open."""
     return [
-        {"id": "pi_%s" % secrets.token_hex(3), "cents": 5000, "label": "Visa ••4242"},
-        {"id": "pi_%s" % secrets.token_hex(3), "cents": 5000, "label": "Visa ••4242"},
-        {"id": "pi_%s" % secrets.token_hex(3), "cents": 5000, "label": "Visa ••4242"},
+        {
+            "id": "pi_%s" % secrets.token_hex(4),
+            "cents": 10000,
+            "label": "Visa ••4242 · $100.00 top-up",
+        }
     ]
 
 

@@ -1,8 +1,8 @@
 # Stuck card loads
 
-Flaky checkout sometimes captures the card more than once while the wallet
-still shows the old balance. Each capture shows up as its own pending load
-on the wallet page. `POST /api/billing/pending/apply` confirms that capture
-with the processor and then credits the workspace.
+If checkout dies after the card processor captures a top-up, the wallet
+shows that payment as still confirming. `POST /api/billing/pending/apply`
+is the customer retry: confirm with the processor, then book the wallet
+once for that payment id.
 
-Staff can also set a wallet from `/admin` if a customer writes in.
+Staff can set a balance from `/admin` if a customer writes in.

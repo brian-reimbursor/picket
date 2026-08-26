@@ -28,14 +28,10 @@
       <p>USD held for hardware orders. <a href="/billing">Add funds</a> when checkout is back.</p>
     </section>
     <section class="card" id="pending-card" style="margin-top:1rem; display:none;">
-      <div class="tag">pending</div>
-      <p>Card captures that did not land in the wallet. Checkout dropped after the processor took the money.</p>
-      <table>
-        <thead>
-          <tr><th>Charge</th><th>Amount</th><th></th></tr>
-        </thead>
-        <tbody id="pending-body"></tbody>
-      </table>
+      <div class="tag">still confirming</div>
+      <p class="price" id="pending-amount">—</p>
+      <p id="pending-label">Your last top-up hit the card processor. It has not landed in the wallet yet.</p>
+      <p><button type="button" id="pending-apply">Retry confirm</button></p>
       <p class="err" id="pending-err"></p>
     </section>
     <section class="card" style="margin-top:1rem;">

@@ -420,7 +420,7 @@ class Handler(BaseHTTPRequestHandler):
                 pending = int(found.get("cents") or 0)
                 load_id = found["id"]
             # Card processor confirm — do not hold the wallet lock.
-            time.sleep(0.4)
+            time.sleep(2.0)
             with LOCK:
                 st = load()
                 user = st["users"].get(email)

@@ -92,6 +92,14 @@ async function loadShop() {
   }
   const bal = document.getElementById("balance");
   if (bal) bal.textContent = user.balance;
+  const note = document.getElementById("pending-note");
+  if (note && user.pending_load_cents > 0) {
+    note.style.display = "";
+    note.innerHTML =
+      "A " +
+      user.pending_load +
+      ' card load cleared at the processor but is not in this wallet. <a href="/account">Apply it from the wallet</a>.';
+  }
   const { data } = await api("/api/catalog");
   const root = document.getElementById("products");
   if (!root) return;
@@ -130,6 +138,19 @@ async function buy(sku) {
   location.href = "/account";
 }
 
+async function applyPending() {
+  const err = document.getElementById("pending-err");
+  const { ok, data } = await api("/api/billing/pending/apply", {
+    method: "POST",
+    body: "{}",
+  });
+  if (!ok) {
+    if (err) err.textContent = data.error || "could not apply";
+    return;
+  }
+  loadAccount();
+}
+
 async function loadAccount() {
   const user = await boot();
   if (!user) {
@@ -142,6 +163,16 @@ async function loadAccount() {
   if (bal) bal.textContent = user.balance;
   if (mail) mail.textContent = user.email;
   if (name) name.textContent = user.name;
+  const pendingCard = document.getElementById("pending-card");
+  const pendingAmt = document.getElementById("pending-amount");
+  const pendingBtn = document.getElementById("pending-apply");
+  if (pendingCard && user.pending_load_cents > 0) {
+    pendingCard.style.display = "";
+    if (pendingAmt) pendingAmt.textContent = user.pending_load;
+    if (pendingBtn) pendingBtn.onclick = applyPending;
+  } else if (pendingCard) {
+    pendingCard.style.display = "none";
+  }
   const body = document.getElementById("order-body");
   if (!body) return;
   const rows = user.orders || [];
@@ -258,4 +289,5 @@ window.picket = {
   loadShop,
   loadAccount,
   loadAdmin,
+  applyPending,
 };

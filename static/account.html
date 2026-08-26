@@ -27,6 +27,13 @@
       <p class="balance" id="balance">—</p>
       <p>USD held for hardware orders. <a href="/billing">Add funds</a> when checkout is back.</p>
     </section>
+    <section class="card" id="pending-card" style="margin-top:1rem; display:none;">
+      <div class="tag">pending</div>
+      <p class="price" id="pending-amount">—</p>
+      <p>Card load captured by the processor. It is not in the wallet yet — checkout dropped before we booked it.</p>
+      <p><button type="button" id="pending-apply">Apply pending load</button></p>
+      <p class="err" id="pending-err"></p>
+    </section>
     <section class="card" style="margin-top:1rem;">
       <h2 style="margin-top:0;font-size:1rem;">Orders</h2>
       <table>

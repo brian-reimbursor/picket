@@ -18,9 +18,6 @@ from picket.store import ROOT, load, log_grant, new_user, now, password_hash, sa
 
 STATIC = ROOT / "static"
 LOCK = threading.Lock()
-PROMO_CODES = {
-    "DESK-CREDIT": 10000,  # $100.00, one redemption per workspace
-}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -171,6 +168,8 @@ class Handler(BaseHTTPRequestHandler):
                     "role": user["role"],
                     "balance": dollars(user["balance_cents"]),
                     "balance_cents": user["balance_cents"],
+                    "pending_load": dollars(int(user.get("pending_load_cents") or 0)),
+                    "pending_load_cents": int(user.get("pending_load_cents") or 0),
                     "orders": user.get("orders") or [],
                 },
             )
@@ -303,13 +302,7 @@ class Handler(BaseHTTPRequestHandler):
                 balance = user["balance_cents"]
             self._json(201, {"order": order, "balance": dollars(balance)})
             return
-        if path == "/api/promos/redeem":
-            payload = self._read_json() or {}
-            code = str(payload.get("code") or "").strip().upper()
-            amount = PROMO_CODES.get(code)
-            if amount is None:
-                self._json(404, {"error": "unknown code"})
-                return
+        if path == "/api/billing/pending/apply":
             with LOCK:
                 st = load()
                 user = self._user(st)
@@ -317,22 +310,34 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(401, {"error": "sign in"})
                     return
                 email = user["email"]
-                if code in (user.get("promos") or []):
-                    self._json(409, {"error": "already redeemed"})
+                pending = int(user.get("pending_load_cents") or 0)
+                if pending < 1:
+                    self._json(409, {"error": "no pending card load"})
                     return
-            # Round-trip to the promotions service — do not hold the store lock.
-            time.sleep(0.35)
+            # Card processor confirm — do not hold the wallet lock.
+            time.sleep(0.4)
             with LOCK:
                 st = load()
                 user = st["users"].get(email)
                 if not user:
                     self._json(401, {"error": "sign in"})
                     return
-                user.setdefault("promos", []).append(code)
-                user["balance_cents"] = int(user["balance_cents"]) + amount
+                user["balance_cents"] = int(user["balance_cents"]) + pending
+                user["pending_load_cents"] = 0
                 save(st)
                 total = user["balance_cents"]
-            self._json(200, {"ok": True, "code": code, "balance": dollars(total)})
+            log_grant(
+                {
+                    "ts": now(),
+                    "ip": self.address_string(),
+                    "ua": self.headers.get("User-Agent"),
+                    "account": email,
+                    "added_cents": pending,
+                    "balance": dollars(total),
+                    "source": "pending-apply",
+                }
+            )
+            self._json(200, {"ok": True, "balance": dollars(total)})
             return
         if path == "/api/admin/credit":
             payload = self._read_json() or {}

@@ -37,6 +37,7 @@ def new_user(email: str, password: str, name: str, role: str, balance_cents: int
         "balance_cents": balance_cents,
         "orders": [],
         "promos": [],
+        "pending_load_cents": 0,
         "created": now(),
     }
 

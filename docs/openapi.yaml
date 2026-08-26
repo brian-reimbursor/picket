@@ -85,27 +85,18 @@ paths:
       responses:
         "201": { description: Purchased }
         "402": { description: Insufficient funds }
-  /api/promos/redeem:
+  /api/billing/pending/apply:
     post:
-      tags: [wallet]
-      summary: Redeem a launch credit
+      tags: [billing]
+      summary: Apply a stuck card load
       description: |
-        Applies a one-time workspace credit. Each code can be redeemed
-        once per account. `DESK-CREDIT` is the current launch amount
-        ($100.00).
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [code]
-              properties:
-                code: { type: string, example: DESK-CREDIT }
+        Moves a processor-cleared load into the wallet when checkout
+        did not finish. One pending load per workspace. If there is
+        nothing pending, returns 409.
       responses:
-        "200": { description: Applied }
+        "200": { description: Wallet updated }
         "401": { description: Not signed in }
-        "409": { description: Already redeemed }
+        "409": { description: No pending load }
   /api/billing/grants:
     post:
       tags: [billing]

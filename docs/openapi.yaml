@@ -85,6 +85,44 @@ paths:
       responses:
         "201": { description: Purchased }
         "402": { description: Insufficient funds }
+  /api/cart:
+    post:
+      tags: [catalog]
+      summary: Add an item to the cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sku]
+              properties:
+                sku: { type: string }
+      responses:
+        "200": { description: Cart contents }
+        "401": { description: Not signed in }
+  /api/cart/remove:
+    post:
+      tags: [catalog]
+      summary: Remove an item from the cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sku]
+              properties:
+                sku: { type: string }
+      responses:
+        "200": { description: Cart contents }
+  /api/cart/checkout:
+    post:
+      tags: [catalog]
+      summary: Pay for the cart from the wallet
+      responses:
+        "201": { description: Purchased }
+        "402": { description: Insufficient funds }
   /api/billing/pending/apply:
     post:
       tags: [billing]

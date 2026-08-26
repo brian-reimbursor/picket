@@ -11,6 +11,7 @@
     <a class="brand" href="/">Picket</a>
     <nav>
       <a href="/shop">Shop</a>
+      <a href="/cart">Cart <span class="cart-count" data-cart-count></span></a>
       <a href="/account">Wallet</a>
       <a href="/billing">Add funds</a>
       <a href="/admin" data-admin>Ops</a>
@@ -26,19 +27,8 @@
       <p>USD available. Orders ship to the office on file.</p>
     </section>
     <h1>Shop</h1>
+    <p class="lede">Add a piece, then open <a href="/cart">Cart</a> to drop it or check out.</p>
     <div class="products" id="products"></div>
-    <section class="card" style="margin-top:1.4rem;">
-      <h2 style="margin-top:0;font-size:1rem;">Cart</h2>
-      <table>
-        <thead>
-          <tr><th>Item</th><th>Price</th><th></th></tr>
-        </thead>
-        <tbody id="cart-body"></tbody>
-      </table>
-      <p>Total <strong id="cart-total">$0.00</strong></p>
-      <p><button type="button" id="cart-checkout">Checkout cart</button></p>
-      <p class="err" id="cart-err"></p>
-    </section>
   </main>
   <footer>
     Picket · workspace hardware

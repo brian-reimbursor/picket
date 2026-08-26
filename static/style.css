@@ -104,6 +104,15 @@ button[disabled], .btn.disabled {
   color: #7a736a;
   cursor: not-allowed;
 }
+button.ghost, a.btn.ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  text-decoration: none;
+  display: inline-block;
+}
+.cart-count { color: var(--muted); font-size: 0.85em; }
+.cart-total { font-size: 1.05rem; }
 label { display: block; font-size: 0.85rem; color: var(--muted); margin: 0.7rem 0 0.2rem; }
 input {
   font: inherit;

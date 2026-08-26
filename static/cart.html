@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Wallet — Picket</title>
+  <title>Cart — Picket</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -21,22 +21,21 @@
   </header>
   <main>
     <p class="who" id="who"></p>
-    <h1>Wallet</h1>
-    <p class="lede"><span id="name"></span></p>
+    <h1>Cart</h1>
+    <p class="lede">Items stay here until you check out or remove them.</p>
     <section class="card">
-      <div class="tag">available</div>
-      <p class="balance" id="balance">—</p>
-      <p>USD held for hardware orders. <a href="/billing">Add funds</a> when checkout is back.</p>
-    </section>
-    <p class="lede"><a href="/cart">Open cart</a> to remove items or check out.</p>
-    <section class="card" style="margin-top:1rem;">
-      <h2 style="margin-top:0;font-size:1rem;">Orders</h2>
       <table>
         <thead>
-          <tr><th>PO</th><th>Item</th><th>Amount</th><th>When</th></tr>
+          <tr><th>Item</th><th>Price</th><th></th></tr>
         </thead>
-        <tbody id="order-body"></tbody>
+        <tbody id="cart-body"></tbody>
       </table>
+      <p class="cart-total">Total <strong id="cart-total">$0.00</strong></p>
+      <p>
+        <button type="button" id="cart-checkout">Checkout</button>
+        <a class="btn ghost" href="/shop">Keep shopping</a>
+      </p>
+      <p class="err" id="cart-err"></p>
     </section>
   </main>
   <footer>
@@ -44,6 +43,6 @@
     · <a href="https://github.com/brian-reimbursor/picket">github.com/brian-reimbursor/picket</a>
   </footer>
   <script src="/static/app.js"></script>
-  <script>picket.loadAccount();</script>
+  <script>picket.loadCart();</script>
 </body>
 </html>

@@ -136,6 +136,7 @@ class Handler(BaseHTTPRequestHandler):
             "/": "index.html",
             "/index.html": "index.html",
             "/shop": "shop.html",
+            "/cart": "cart.html",
             "/account": "account.html",
             "/billing": "billing.html",
             "/admin": "admin.html",

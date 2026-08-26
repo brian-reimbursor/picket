@@ -34,6 +34,10 @@ function paintNav(user) {
     el.style.display = user && user.role === "admin" ? "" : "none";
   });
   if (who && user) who.textContent = user.email;
+  const n = user && user.cart ? user.cart.length : 0;
+  document.querySelectorAll("[data-cart-count]").forEach((el) => {
+    el.textContent = n ? "(" + n + ")" : "";
+  });
 }
 
 async function boot() {
@@ -110,9 +114,6 @@ async function loadShop() {
   root.querySelectorAll("button[data-sku]").forEach((btn) => {
     btn.addEventListener("click", () => addToCart(btn.getAttribute("data-sku")));
   });
-  renderCart(user.cart || []);
-  const checkout = document.getElementById("cart-checkout");
-  if (checkout) checkout.onclick = checkoutCart;
 }
 
 async function addToCart(sku) {
@@ -125,7 +126,20 @@ async function addToCart(sku) {
     if (err) err.textContent = data.error || "could not add";
     return;
   }
-  renderCart(data.cart || []);
+  if (err) err.textContent = "";
+  paintNav({ ...(await currentUser()), cart: data.cart || [] });
+  location.href = "/cart";
+}
+
+async function loadCart() {
+  const user = await boot();
+  if (!user) {
+    location.href = "/";
+    return;
+  }
+  renderCart(user.cart || []);
+  const checkout = document.getElementById("cart-checkout");
+  if (checkout) checkout.onclick = checkoutCart;
 }
 
 function renderCart(cart) {
@@ -135,7 +149,7 @@ function renderCart(cart) {
   body.innerHTML = (cart || [])
     .map(
       (row) =>
-        `<tr><td>${row.name}</td><td>${row.price}</td><td><button type="button" data-rm="${row.sku}">Remove</button></td></tr>`
+        `<tr><td>${row.name}</td><td>${row.price}</td><td><button class="ghost" type="button" data-rm="${row.sku}">Remove</button></td></tr>`
     )
     .join("") || `<tr><td colspan="3">Cart is empty.</td></tr>`;
   body.querySelectorAll("[data-rm]").forEach((btn) => {
@@ -151,6 +165,8 @@ async function removeFromCart(sku) {
     body: JSON.stringify({ sku }),
   });
   renderCart(data.cart || []);
+  const user = await currentUser();
+  if (user) paintNav({ ...user, cart: data.cart || [] });
 }
 
 async function checkoutCart() {
@@ -196,13 +212,6 @@ async function loadAccount() {
   if (bal) bal.textContent = user.balance;
   if (mail) mail.textContent = user.email;
   if (name) name.textContent = user.name;
-  const cartBody = document.getElementById("cart-body");
-  if (cartBody) {
-    const cart = user.cart || [];
-    cartBody.innerHTML = cart.length
-      ? cart.map((row) => `<tr><td>${row.name}</td><td>${row.price}</td></tr>`).join("")
-      : `<tr><td colspan="2">Cart is empty.</td></tr>`;
-  }
   const body = document.getElementById("order-body");
   if (!body) return;
   const rows = user.orders || [];
@@ -360,6 +369,7 @@ window.picket = {
   onLogin,
   onLogout,
   loadShop,
+  loadCart,
   loadAccount,
   loadAdmin,
   adminCreate,

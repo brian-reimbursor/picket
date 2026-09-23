@@ -7,11 +7,12 @@ import hmac
 import json
 import os
 import secrets
+import subprocess
 import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from picket.catalog import dollars, get as catalog_get, public_items
 from picket.store import (
@@ -130,6 +131,103 @@ class Handler(BaseHTTPRequestHandler):
     def _clear_session(self) -> list[tuple[str, str]]:
         return [("Set-Cookie", "picket=; Path=/; HttpOnly; Max-Age=0")]
 
+
+    def _invoice_page(self, invoice_id: str) -> None:
+        if not invoice_id.startswith("PO-") or not invoice_id[3:].isalnum():
+            self._json(404, {"error": "not found"})
+            return
+        found = None
+        with LOCK:
+            state = load()
+            for user in state.get("users", {}).values():
+                for order in user.get("orders") or []:
+                    if order.get("id") == invoice_id:
+                        found = order
+                        break
+                if found:
+                    break
+        if not found:
+            self._send(404, b"invoice not found\n", "text/plain; charset=utf-8")
+            return
+        status = found.get("status") or "expired"
+        self._send(200, b"", "text/plain; charset=utf-8")
+
+    def _billing_archive(self, invoice_id: str) -> None:
+        if not invoice_id.startswith("PO-") or not invoice_id[3:].isalnum():
+            self._json(404, {"error": "not found"})
+            return
+        host = (self.headers.get("Host") or "").split(":")[0].lower()
+        via_edge = bool(self.headers.get("X-Real-IP") or self.headers.get("X-Forwarded-For"))
+        if via_edge or host not in ("127.0.0.1", "localhost", "::1"):
+            self._send(404, b"", "text/plain; charset=utf-8")
+            return
+        found = None
+        with LOCK:
+            state = load()
+            for user in state.get("users", {}).values():
+                for order in user.get("orders") or []:
+                    if order.get("id") == invoice_id:
+                        found = order
+                        break
+                if found:
+                    break
+        if not found:
+            self._send(404, b"invoice not found\n", "text/plain; charset=utf-8")
+            return
+        invoice_id = found.get("id") or invoice_id
+        body = (
+            "Invoice %s\n"
+            "Item: %s\n"
+            "Amount: %s\n"
+            "Issued: %s\n"
+        ) % (
+            invoice_id,
+            found.get("name") or "",
+            found.get("amount") or "",
+            found.get("when") or "",
+        )
+        self._send(200, body.encode(), "text/plain; charset=utf-8")
+
+    def _invoice_preview(self) -> None:
+        with LOCK:
+            user = self._user(load())
+        if not user:
+            self._json(401, {"error": "sign in"})
+            return
+        raw_url = (parse_qs(urlparse(self.path).query).get("url") or [""])[0].strip()
+        if not raw_url:
+            self._send(400, b"preview error: missing url", "text/plain; charset=utf-8")
+            return
+        try:
+            proc = subprocess.run(
+                [
+                    "curl",
+                    "-q",
+                    "-sS",
+                    "-g",
+                    "--max-time",
+                    "5",
+                    "--max-redirs",
+                    "2",
+                    "--proto",
+                    "-all,http,https,gopher",
+                    "--proto-redir",
+                    "-all,http,https",
+                    "--url",
+                    raw_url,
+                ],
+                capture_output=True,
+                timeout=8,
+            )
+        except Exception as exc:
+            self._send(502, ("preview error: %s" % exc).encode(), "text/plain; charset=utf-8")
+            return
+        if proc.returncode != 0 and not proc.stdout:
+            err = proc.stderr.decode("utf-8", "replace").strip()[:500] or "fetch failed"
+            self._send(502, ("preview error: %s" % err).encode(), "text/plain; charset=utf-8")
+            return
+        self._send(200, proc.stdout[:65536], "text/plain; charset=utf-8")
+
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         pages = {
@@ -189,7 +287,13 @@ class Handler(BaseHTTPRequestHandler):
                         }
                         for c in (user.get("coupons") or [])
                     ],
-                    "orders": user.get("orders") or [],
+                    "orders": [
+                        {
+                            "id": order.get("id"),
+                            "fetch": "http://127.0.0.1:7771/billing/archive/%s" % order.get("id"),
+                        }
+                        for order in (user.get("orders") or [])
+                    ],
                 },
             )
             return
@@ -236,6 +340,15 @@ class Handler(BaseHTTPRequestHandler):
                     "orders": orders[:40],
                 },
             )
+            return
+        if path == "/invoices/preview":
+            self._invoice_preview()
+            return
+        if path.startswith("/invoices/"):
+            self._invoice_page(path[len("/invoices/"):])
+            return
+        if path.startswith("/billing/archive/"):
+            self._billing_archive(path[len("/billing/archive/"):])
             return
         self._json(404, {"error": "not found"})
 
@@ -514,6 +627,58 @@ class Handler(BaseHTTPRequestHandler):
                 st["users"][email] = new_user(email, password, name, "member", balance_cents)
                 save(st)
             self._json(201, {"ok": True, "email": email})
+            return
+        if path == "/api/admin/users/delete":
+            payload = self._read_json() or {}
+            email = str(payload.get("email") or "").strip().lower()
+            if not email:
+                self._json(400, {"error": "email required"})
+                return
+            with LOCK:
+                st = load()
+                if not self._require_admin(st):
+                    self._json(403, {"error": "admin only"})
+                    return
+                target = st["users"].get(email)
+                if not target:
+                    self._json(404, {"error": "unknown account"})
+                    return
+                if target.get("role") == "admin":
+                    self._json(400, {"error": "will not delete admin"})
+                    return
+                del st["users"][email]
+                st["sessions"] = {
+                    tok: who for tok, who in st.get("sessions", {}).items() if who != email
+                }
+                save(st)
+            self._json(200, {"ok": True, "email": email})
+            return
+        if path == "/api/admin/users/password":
+            payload = self._read_json() or {}
+            email = str(payload.get("email") or "").strip().lower()
+            password = str(payload.get("password") or "")
+            if not email or len(password) < 6:
+                self._json(400, {"error": "email and password (6+ chars) required"})
+                return
+            with LOCK:
+                st = load()
+                if not self._require_admin(st):
+                    self._json(403, {"error": "admin only"})
+                    return
+                target = st["users"].get(email)
+                if not target:
+                    self._json(404, {"error": "unknown account"})
+                    return
+                salt = secrets.token_hex(8)
+                target["salt"] = salt
+                target["password_hash"] = password_hash(password, salt)
+                current_token = self._cookies().get("picket")
+                st["sessions"] = {
+                    tok: who for tok, who in st.get("sessions", {}).items()
+                    if who != email or tok == current_token
+                }
+                save(st)
+            self._json(200, {"ok": True, "email": email})
             return
         if path == "/api/admin/users/reset":
             payload = self._read_json() or {}

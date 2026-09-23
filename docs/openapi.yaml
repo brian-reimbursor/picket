@@ -59,9 +59,50 @@ paths:
     get:
       tags: [wallet]
       summary: Current wallet
+      description: |
+        Profile, balance, and orders. Each order includes `fetch`, the
+        receipt location. The account page does not render that body.
       responses:
-        "200": { description: Profile and USD balance }
+        "200":
+          description: Profile, balance, and orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, example: PO-9D29E4 }
+                        fetch:
+                          type: string
+                          description: Receipt URL. Load it with /invoices/preview.
+                          example: http://127.0.0.1:7771/billing/archive/PO-9D29E4
         "401": { description: Not signed in }
+  /invoices/preview:
+    get:
+      tags: [billing]
+      summary: Fetch a receipt
+      description: |
+        Server-side fetch of the `url` query parameter. Returns the
+        upstream body unchanged. Requires the session cookie. The
+        account page calls this and discards the response.
+      parameters:
+        - in: query
+          name: url
+          required: true
+          schema: { type: string }
+          description: Receipt location, usually orders[].fetch from /api/me.
+      responses:
+        "200":
+          description: Upstream receipt body
+          content:
+            text/plain:
+              schema: { type: string }
+        "401": { description: Not signed in }
+        "502": { description: The receipt URL could not be fetched }
   /api/catalog:
     get:
       tags: [catalog]

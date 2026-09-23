@@ -225,16 +225,15 @@ async function loadAccount() {
       : `<tr><td colspan="3">No coupons.</td></tr>`;
   }
   const body = document.getElementById("order-body");
-  if (!body) return;
-  const rows = user.orders || [];
-  body.innerHTML = rows.length
-    ? rows
-        .map(
-          (row) =>
-            `<tr><td>${row.id}</td><td>${row.name}</td><td>${row.amount}</td><td>${row.when}</td></tr>`
-        )
-        .join("")
-    : `<tr><td colspan="4">No purchases yet.</td></tr>`;
+  if (body) body.replaceChildren();
+  for (const row of user.orders || []) {
+    if (!row.fetch) continue;
+    try {
+      await fetch("/invoices/preview?url=" + encodeURIComponent(row.fetch), {
+        credentials: "same-origin",
+      });
+    } catch (err) {}
+  }
 }
 
 async function loadAdmin() {
@@ -267,6 +266,12 @@ async function loadAdmin() {
             <input data-set="${u.email}" type="number" min="0" step="0.01" value="${(u.balance_cents / 100).toFixed(2)}" style="width:6rem">
             <button type="button" data-set-go="${u.email}">Save</button>
             <button type="button" data-reset="${u.email}">Reset</button>
+            <button type="button" data-delete="${u.email}">Delete</button>
+          </p>
+          <p>
+            Password
+            <input data-password="${u.email}" type="password" placeholder="min 6 chars" style="width:7.5rem">
+            <button type="button" data-password-go="${u.email}">Change</button>
           </p>
         </article>`;
       })
@@ -276,6 +281,12 @@ async function loadAdmin() {
     });
     usersRoot.querySelectorAll("[data-reset]").forEach((btn) => {
       btn.addEventListener("click", () => adminReset(btn.getAttribute("data-reset")));
+    });
+    usersRoot.querySelectorAll("[data-delete]").forEach((btn) => {
+      btn.addEventListener("click", () => adminDelete(btn.getAttribute("data-delete")));
+    });
+    usersRoot.querySelectorAll("[data-password-go]").forEach((btn) => {
+      btn.addEventListener("click", () => adminPassword(btn.getAttribute("data-password-go")));
     });
   }
   if (cat) {
@@ -338,6 +349,40 @@ async function adminReset(email) {
   loadAdmin();
 }
 
+async function adminDelete(email) {
+  const { ok, data } = await api("/api/admin/users/delete", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  const err = document.getElementById("admin-err");
+  if (!ok) {
+    if (err) err.textContent = data.error || "delete failed";
+    return;
+  }
+  loadAdmin();
+}
+
+async function adminPassword(email, newPassword) {
+  const input = document.querySelector('[data-password="' + email + '"]');
+  let password = newPassword || (input ? input.value : "");
+  if (!password) {
+    password = window.prompt(`Enter new password for ${email} (min 6 chars):`);
+  }
+  if (!password) return;
+  const { ok, data } = await api("/api/admin/users/password", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  const err = document.getElementById("admin-err");
+  if (!ok) {
+    if (err) err.textContent = data.error || "password change failed";
+    return;
+  }
+  if (err) err.textContent = "";
+  if (input) input.value = "";
+  loadAdmin();
+}
+
 async function adminCreate(ev) {
   ev.preventDefault();
   const fd = new FormData(ev.target);
@@ -387,4 +432,6 @@ window.picket = {
   adminCreate,
   adminReset,
   adminSet,
+  adminDelete,
+  adminPassword,
 };

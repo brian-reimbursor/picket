@@ -61,7 +61,8 @@ paths:
       summary: Current wallet
       description: |
         Profile, balance, and orders. Each order includes `fetch`, the
-        receipt location. The account page does not render that body.
+        receipt location. The account page lists the invoice and links
+        View at the unsigned copy. It does not print the line items.
       responses:
         "200":
           description: Profile, balance, and orders
@@ -87,8 +88,8 @@ paths:
       summary: Fetch a receipt
       description: |
         Server-side fetch of the `url` query parameter. Returns the
-        upstream body unchanged. Requires the session cookie. The
-        account page calls this and discards the response.
+        upstream body unchanged. Requires the session cookie. View on
+        the account page links here.
 
         `orders[].fetch` is only the held file. It does not include the
         line items. It points at an unsigned copy, under the same host,

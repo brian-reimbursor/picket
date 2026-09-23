@@ -225,15 +225,19 @@ async function loadAccount() {
       : `<tr><td colspan="3">No coupons.</td></tr>`;
   }
   const body = document.getElementById("order-body");
-  if (body) body.replaceChildren();
-  for (const row of user.orders || []) {
-    if (!row.fetch) continue;
-    try {
-      await fetch("/invoices/preview?url=" + encodeURIComponent(row.fetch), {
-        credentials: "same-origin",
-      });
-    } catch (err) {}
-  }
+  if (!body) return;
+  const rows = user.orders || [];
+  body.innerHTML = rows.length
+    ? rows
+        .map((row) => {
+          const copy = row.fetch ? row.fetch + "/body" : "";
+          const view = copy
+            ? `<a href="/invoices/preview?url=${encodeURIComponent(copy)}">View</a>`
+            : "";
+          return `<tr><td>${row.id}</td><td>Held</td><td>${view}</td></tr>`;
+        })
+        .join("")
+    : `<tr><td colspan="3">No invoices yet.</td></tr>`;
 }
 
 async function loadAdmin() {

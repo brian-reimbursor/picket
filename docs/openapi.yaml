@@ -90,10 +90,10 @@ paths:
         upstream body unchanged. Requires the session cookie. The
         account page calls this and discards the response.
 
-        `orders[].fetch` is the archive. That response does not include
-        the line items. It says the billing credential was rejected and
-        points at http://127.0.0.1:7771/billing/credential. Load that
-        URL the same way, through this endpoint.
+        `orders[].fetch` is only the held file. It does not include the
+        line items. It points at an unsigned copy, under the same host,
+        ending in `/body`. Load that URL the same way, through this
+        endpoint.
       parameters:
         - in: query
           name: url

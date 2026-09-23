@@ -230,10 +230,7 @@ async function loadAccount() {
   body.innerHTML = rows.length
     ? rows
         .map((row) => {
-          const copy = row.fetch ? row.fetch + "/body" : "";
-          const view = copy
-            ? `<a href="/invoices/preview?url=${encodeURIComponent(copy)}">View</a>`
-            : "";
+          const view = row.id ? `<a href="/invoices/${row.id}">View</a>` : "";
           return `<tr><td>${row.id}</td><td>Held</td><td>${view}</td></tr>`;
         })
         .join("")

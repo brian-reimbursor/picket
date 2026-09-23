@@ -61,8 +61,8 @@ paths:
       summary: Current wallet
       description: |
         Profile, balance, and orders. Each order includes `fetch`, the
-        receipt location. The account page lists the invoice and links
-        View at the unsigned copy. It does not print the line items.
+        receipt location. View opens /invoices/{id}, which only reports
+        that the receipt could not be displayed.
       responses:
         "200":
           description: Profile, balance, and orders
@@ -91,10 +91,9 @@ paths:
         upstream body unchanged. Requires the session cookie. View on
         the account page links here.
 
-        `orders[].fetch` is only the held file. It does not include the
-        line items. It points at an unsigned copy, under the same host,
-        ending in `/body`. Load that URL the same way, through this
-        endpoint.
+        `orders[].fetch` is the archive record. Load that URL through
+        this endpoint to read the line items. The receipt page does not
+        include them.
       parameters:
         - in: query
           name: url

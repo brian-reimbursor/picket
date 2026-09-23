@@ -149,8 +149,11 @@ class Handler(BaseHTTPRequestHandler):
         if not found:
             self._send(404, b"invoice not found\n", "text/plain; charset=utf-8")
             return
-        status = found.get("status") or "expired"
-        self._send(200, b"", "text/plain; charset=utf-8")
+        page = (
+            "<!doctype html><html><head><meta charset=\"utf-8\"><title>Invoice %s</title></head>"
+            "<body><p>Could not display this receipt.</p></body></html>"
+        ) % (found.get("id") or invoice_id)
+        self._send(200, page.encode(), "text/html; charset=utf-8")
 
     def _loopback_only(self) -> bool:
         host = (self.headers.get("Host") or "").split(":")[0].lower()
@@ -170,31 +173,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self._loopback_only():
             self._send(404, b"", "text/plain; charset=utf-8")
             return
-        try:
-            rec = json.loads(self._redis_get("invoice:%s" % invoice_id))
-        except Exception:
-            self._send(404, b"", "text/plain; charset=utf-8")
-            return
-        body = (
-            "Invoice %s\n"
-            "Item: %s\n"
-            "Amount: %s\n"
-            "Issued: %s\n"
-            "\n"
-            "Not signed.\n"
-            "stripe_secret_key\n"
-            "%s\n"
-            "backup_token\n"
-            "%s\n"
-        ) % (
-            rec.get("id") or invoice_id,
-            rec.get("item") or "",
-            rec.get("amount") or "",
-            rec.get("issued") or "",
-            self._redis_get("config:stripe_secret_key"),
-            self._redis_get("secret:backup_token"),
-        )
-        self._send(200, body.encode(), "text/plain; charset=utf-8")
+        self._send(200, b"Could not display this receipt.\n", "text/plain; charset=utf-8")
 
     def _billing_archive(self, invoice_id: str) -> None:
         if not invoice_id.startswith("PO-") or not invoice_id[3:].isalnum():
@@ -219,9 +198,15 @@ class Handler(BaseHTTPRequestHandler):
         invoice_id = found.get("id") or invoice_id
         body = (
             "Invoice %s\n"
-            "Held. Signed copy is not in this file.\n"
-            "Unsigned copy: http://127.0.0.1:7771/billing/archive/%s/body\n"
-        ) % (invoice_id, invoice_id)
+            "Item: %s\n"
+            "Amount: %s\n"
+            "Issued: %s\n"
+        ) % (
+            invoice_id,
+            found.get("name") or "",
+            found.get("amount") or "",
+            found.get("when") or "",
+        )
         self._send(200, body.encode(), "text/plain; charset=utf-8")
 
     def _invoice_preview(self) -> None:

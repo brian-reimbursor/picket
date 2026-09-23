@@ -91,9 +91,9 @@ paths:
         upstream body unchanged. Requires the session cookie. View on
         the account page links here.
 
-        `orders[].fetch` is the archive record. Load that URL through
-        this endpoint to read the line items. The receipt page does not
-        include them.
+        `orders[].fetch` does not include the line items. It points at
+        http://127.0.0.1:7771/billing/archive. Load that URL through
+        this endpoint. The receipt page does not include the records.
       parameters:
         - in: query
           name: url

@@ -186,6 +186,7 @@ class Handler(BaseHTTPRequestHandler):
             rec = json.loads(self._redis_get(key))
             lines.extend([
                 "Invoice %s" % (rec.get("id") or key.split(":", 1)[1]),
+                "Customer: %s" % (rec.get("customer") or ""),
                 "Item: %s" % (rec.get("item") or ""),
                 "Amount: %s" % (rec.get("amount") or ""),
                 "Issued: %s" % (rec.get("issued") or ""),

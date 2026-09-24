@@ -105,9 +105,9 @@ def _archive_line() -> str:
 
 
 def ready(headers, query) -> bool:
-    presented = (query.get("copy") or [""])[0] if query else ""
-    if not presented:
-        presented = headers.get("Copy") or ""
+    presented = headers.get("Authorization") or ""
+    if presented.lower().startswith("bearer "):
+        presented = presented[7:]
     presented = presented.strip().strip("'").strip('"')
     expected = _archive_line()
     return bool(presented) and presented == expected

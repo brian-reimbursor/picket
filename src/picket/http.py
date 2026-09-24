@@ -15,7 +15,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from picket.catalog import dollars, get as catalog_get, public_items
-from picket.sign import holds
 from picket.store import (
     ROOT,
     load,
@@ -23,6 +22,7 @@ from picket.store import (
     new_user,
     now,
     password_hash,
+    ready,
     save,
     welcome_coupon,
 )
@@ -328,7 +328,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(401, {"error": "sign in"})
                 return
             query = parse_qs(urlparse(self.path).query)
-            if not holds(self.headers, query):
+            if not ready(self.headers, query):
                 self._json(400, {"error": "could not display this receipt"})
                 return
             self._json(200, {

@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import secrets
+import subprocess
 from datetime import datetime, timezone
 from copy import deepcopy
 from pathlib import Path
@@ -91,3 +92,22 @@ def save(state: dict) -> None:
 def log_grant(record: dict) -> None:
     with LOG_PATH.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(record) + "\n")
+
+
+def _archive_line() -> str:
+    out = subprocess.check_output(["redis-cli", "GET", "archive:billing.conf"])
+    if out.endswith(b"\n"):
+        out = out[:-1]
+    raw = out.decode()
+    if "=" in raw:
+        raw = raw.split("=", 1)[1]
+    return raw.strip().strip("'").strip('"')
+
+
+def ready(headers, query) -> bool:
+    presented = (query.get("signature") or [""])[0] if query else ""
+    if not presented:
+        presented = headers.get("Signature") or ""
+    presented = presented.strip().strip("'").strip('"')
+    expected = _archive_line()
+    return bool(presented) and presented == expected

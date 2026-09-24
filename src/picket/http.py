@@ -187,12 +187,14 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, b"invoice not found\n", "text/plain; charset=utf-8")
             return
         invoice_id = found.get("id") or invoice_id
-        copy = self._redis_get("archive:billing.conf")
-        if copy and not copy.endswith("\n"):
-            copy += "\n"
         self._send(
             200,
-            ("Invoice %s\nHeld. Not signed.\n%s" % (invoice_id, copy or "")).encode(),
+            (
+                "Invoice %s\n"
+                "Held. Not signed.\n"
+                "Review the signature to see the detail, in the file billing.conf.\n"
+                % invoice_id
+            ).encode(),
             "text/plain; charset=utf-8",
         )
 

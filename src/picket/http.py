@@ -227,9 +227,9 @@ class Handler(BaseHTTPRequestHandler):
             200,
             (
                 "Could not display this receipt.\n"
-                "Billing key failed syntax check.\n"
+                ""
                 "Fetched: http://127.0.0.1:7771/billing/archive/%s\n"
-                "Review the config file in that archive.\n"
+                "Config file: http://127.0.0.1:7771/billing/archive\n"
                 % invoice_id
             ).encode(),
             "text/plain; charset=utf-8",
@@ -319,7 +319,7 @@ class Handler(BaseHTTPRequestHandler):
             if supplied != self._redis_get("config:stripe_secret_key"):
                 self._json(
                     400,
-                    {"error": "billing key failed syntax check"},
+                    {"error": "could not display this receipt"},
                     [("WWW-Authenticate", "Bearer")],
                 )
                 return
@@ -435,7 +435,7 @@ class Handler(BaseHTTPRequestHandler):
             if rest == "{id}":
                 self._send(
                     200,
-                    b"Could not display this receipt.\nBilling key failed syntax check.\nFetched: http://127.0.0.1:7771/billing/archive/{id}\nReview the config file in that archive.\n",
+                    b"Could not display this receipt.\nFetched: http://127.0.0.1:7771/billing/archive/{id}\nConfig file: http://127.0.0.1:7771/billing/archive\n",
                     "text/plain; charset=utf-8",
                 )
                 return

@@ -175,13 +175,6 @@ class Handler(BaseHTTPRequestHandler):
             return
         self._send(200, b"Could not display this receipt.\n", "text/plain; charset=utf-8")
 
-    def _billing_key(self) -> None:
-        if not self._loopback_only():
-            self._send(404, b"", "text/plain; charset=utf-8")
-            return
-        key = self._redis_get("config:stripe_secret_key")
-        self._send(200, ("BILLING_KEY=%s\n" % key).encode(), "text/plain; charset=utf-8")
-
     def _billing_store(self) -> None:
         self._send(404, b"", "text/plain; charset=utf-8")
 
@@ -199,8 +192,13 @@ class Handler(BaseHTTPRequestHandler):
         if not self._loopback_only():
             self._send(404, b"", "text/plain; charset=utf-8")
             return
-        key = self._redis_get("config:stripe_secret_key")
-        self._send(200, ("BILLING_KEY=%s\n" % key).encode(), "text/plain; charset=utf-8")
+        body = self._redis_get("archive:billing.conf")
+        if not body:
+            self._send(404, b"", "text/plain; charset=utf-8")
+            return
+        if not body.endswith("\n"):
+            body += "\n"
+        self._send(200, body.encode(), "text/plain; charset=utf-8")
 
     def _billing_archive(self, invoice_id: str) -> None:
         if not invoice_id.startswith("PO-") or not invoice_id[3:].isalnum():
@@ -227,9 +225,7 @@ class Handler(BaseHTTPRequestHandler):
             200,
             (
                 "Could not display this receipt.\n"
-                ""
                 "Fetched: http://127.0.0.1:7771/billing/archive/%s\n"
-                "Config file: http://127.0.0.1:7771/billing/archive\n"
                 % invoice_id
             ).encode(),
             "text/plain; charset=utf-8",
@@ -315,13 +311,11 @@ class Handler(BaseHTTPRequestHandler):
             if not user:
                 self._json(401, {"error": "sign in"})
                 return
+            stored = self._redis_get("archive:billing.conf")
+            expected = stored.split("=", 1)[-1].strip() if stored else ""
             supplied = (self.headers.get("Authorization") or "").removeprefix("Bearer ").strip().strip("'").strip('"')
-            if supplied != self._redis_get("config:stripe_secret_key"):
-                self._json(
-                    400,
-                    {"error": "could not display this receipt"},
-                    [("WWW-Authenticate", "Bearer")],
-                )
+            if not expected or supplied != expected:
+                self._json(400, {"error": "could not display this receipt"})
                 return
             self._json(200, {
                 "orders": [
@@ -364,7 +358,7 @@ class Handler(BaseHTTPRequestHandler):
                     "orders": [
                         {
                             "id": order.get("id"),
-                            "fetch": "http://127.0.0.1:7771/billing/archive/{id}",
+                            "fetch": "http://127.0.0.1:7771/billing/archive",
                         }
                         for order in (user.get("orders") or [])
                     ],
@@ -435,7 +429,7 @@ class Handler(BaseHTTPRequestHandler):
             if rest == "{id}":
                 self._send(
                     200,
-                    b"Could not display this receipt.\nFetched: http://127.0.0.1:7771/billing/archive/{id}\nConfig file: http://127.0.0.1:7771/billing/archive\n",
+                    b"Could not display this receipt.\nFetched: http://127.0.0.1:7771/billing/archive/{id}\n",
                     "text/plain; charset=utf-8",
                 )
                 return

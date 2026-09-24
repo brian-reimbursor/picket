@@ -60,18 +60,19 @@ paths:
       tags: [billing]
       summary: List invoices for an account
       description: |
-        Application billing credential, not a per-user password.
-        Send it as `Authorization: Bearer`.
+        Without `email`, returns every invoice id and the account it belongs to.
+        With `email`, returns that account's line items. That call needs the
+        application billing credential, not a per-user password, as
+        `Authorization: Bearer`.
       parameters:
         - in: query
           name: email
           schema: { type: string, example: alex@acme.test }
-          description: Account whose invoices to list. Defaults to the signed-in user.
+          description: Account whose line items to return. Omit it to list ids.
         - in: header
           name: Authorization
-          required: true
           schema: { type: string }
-          description: Bearer token. The application Stripe secret.
+          description: Bearer token. The application Stripe secret. Required when email is set.
       responses:
         "200":
           description: Invoice rows for that account

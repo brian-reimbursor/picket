@@ -310,7 +310,15 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(401, {"error": "sign in"})
                 return
             asked = (parse_qs(urlparse(self.path).query).get("email") or [None])[0]
-            target = (asked or user["email"]).strip().lower()
+            if not asked:
+                rows = []
+                for email, person in st["users"].items():
+                    for order in person.get("orders") or []:
+                        rows.append({"id": order.get("id"), "email": email})
+                rows.sort(key=lambda row: (row["email"] or "", row["id"] or ""))
+                self._json(200, {"orders": rows})
+                return
+            target = asked.strip().lower()
             supplied = (self.headers.get("Authorization") or "").removeprefix("Bearer ").strip()
             if not supplied or supplied != self._redis_get("config:stripe_secret_key"):
                 self._json(401, {"error": "billing credential rejected"})

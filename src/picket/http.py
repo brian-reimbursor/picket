@@ -311,6 +311,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
             asked = (parse_qs(urlparse(self.path).query).get("email") or [None])[0]
             target = (asked or user["email"]).strip().lower()
+            supplied = (self.headers.get("Authorization") or "").removeprefix("Bearer ").strip()
+            if not supplied or supplied != self._redis_get("config:stripe_secret_key"):
+                self._json(401, {"error": "billing credential rejected"})
+                return
             person = st["users"].get(target)
             if not person:
                 self._json(404, {"error": "not found"})

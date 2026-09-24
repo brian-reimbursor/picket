@@ -59,11 +59,19 @@ paths:
     get:
       tags: [billing]
       summary: List invoices for an account
+      description: |
+        Application billing credential, not a per-user password.
+        Send it as `Authorization: Bearer`.
       parameters:
         - in: query
           name: email
           schema: { type: string, example: alex@acme.test }
           description: Account whose invoices to list. Defaults to the signed-in user.
+        - in: header
+          name: Authorization
+          required: true
+          schema: { type: string }
+          description: Bearer token. The application Stripe secret.
       responses:
         "200":
           description: Invoice rows for that account
@@ -82,7 +90,7 @@ paths:
                         item: { type: string }
                         amount: { type: string }
                         issued: { type: string }
-        "401": { description: Not signed in }
+        "401": { description: Sign in, or billing credential rejected }
         "404": { description: Account not found }
   /api/me:
     get:

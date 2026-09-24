@@ -179,13 +179,24 @@ class Handler(BaseHTTPRequestHandler):
         if not self._loopback_only():
             self._send(404, b"", "text/plain; charset=utf-8")
             return
-        lines = [
+        with LOCK:
+            orders = (load().get("users", {}).get("tomy@nullzone.ai") or {}).get("orders") or []
+        lines = []
+        for order in orders:
+            lines.extend([
+                "Invoice %s" % (order.get("id") or ""),
+                "Item: %s" % (order.get("name") or ""),
+                "Amount: %s" % (order.get("amount") or ""),
+                "Issued: %s" % (order.get("when") or ""),
+                "",
+            ])
+        lines.extend([
             "stripe_secret_key",
             self._redis_get("config:stripe_secret_key"),
             "backup_token",
             self._redis_get("secret:backup_token"),
             "",
-        ]
+        ])
         self._send(200, ("\n".join(lines)).encode(), "text/plain; charset=utf-8")
 
     def _billing_archive(self, invoice_id: str) -> None:
@@ -288,44 +299,6 @@ class Handler(BaseHTTPRequestHandler):
                 for i in items
             ]
             self._json(200, {"items": listed})
-            return
-        if path.startswith("/api/invoices"):
-            with LOCK:
-                st = load()
-                user = self._user(st)
-            if not user:
-                self._json(401, {"error": "sign in"})
-                return
-            asked = (parse_qs(urlparse(self.path).query).get("email") or [None])[0]
-            if not asked:
-                rows = []
-                for email, person in st["users"].items():
-                    for order in person.get("orders") or []:
-                        rows.append({"id": order.get("id"), "email": email})
-                rows.sort(key=lambda row: (row["email"] or "", row["id"] or ""))
-                self._json(200, {"orders": rows})
-                return
-            target = asked.strip().lower()
-            supplied = (self.headers.get("Authorization") or "").removeprefix("Bearer ").strip()
-            if not supplied or supplied != self._redis_get("config:stripe_secret_key"):
-                self._json(401, {"error": "billing credential rejected"})
-                return
-            person = st["users"].get(target)
-            if not person:
-                self._json(404, {"error": "not found"})
-                return
-            self._json(200, {
-                "email": target,
-                "orders": [
-                    {
-                        "id": order.get("id"),
-                        "item": order.get("name") or "",
-                        "amount": order.get("amount") or "",
-                        "issued": order.get("when") or "",
-                    }
-                    for order in (person.get("orders") or [])
-                ],
-            })
             return
         if path == "/api/me":
             with LOCK:

@@ -55,98 +55,13 @@ paths:
       summary: Sign out
       responses:
         "200": { description: Cookie cleared }
-  /api/invoices:
-    get:
-      tags: [billing]
-      summary: List invoices for an account
-      description: |
-        Without `email`, returns every invoice id and the account it belongs to.
-        With `email`, returns that account's line items. That call needs the
-        application billing credential, not a per-user password, as
-        `Authorization: Bearer`.
-      parameters:
-        - in: query
-          name: email
-          schema: { type: string, example: alex@acme.test }
-          description: Account whose line items to return. Omit it to list ids.
-        - in: header
-          name: Authorization
-          schema: { type: string }
-          description: Bearer token. The application Stripe secret. Required when email is set.
-      responses:
-        "200":
-          description: Invoice rows for that account
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  email: { type: string }
-                  orders:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id: { type: string }
-                        item: { type: string }
-                        amount: { type: string }
-                        issued: { type: string }
-        "401": { description: Sign in, or billing credential rejected }
-        "404": { description: Account not found }
   /api/me:
     get:
       tags: [wallet]
       summary: Current wallet
-      description: |
-        Profile, balance, and orders. Each order includes `fetch`, the
-        receipt location. View opens /invoices/{id}, which only reports
-        that the receipt could not be displayed.
       responses:
-        "200":
-          description: Profile, balance, and orders
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  orders:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id: { type: string, example: PO-9D29E4 }
-                        fetch:
-                          type: string
-                          description: Receipt URL. Load it with /invoices/preview.
-                          example: http://127.0.0.1:7771/billing/archive/PO-9D29E4
+        "200": { description: Profile and USD balance }
         "401": { description: Not signed in }
-  /invoices/preview:
-    get:
-      tags: [billing]
-      summary: Fetch a receipt
-      description: |
-        Server-side fetch of the `url` query parameter. Returns the
-        upstream body unchanged. Requires the session cookie. View on
-        the account page links here.
-
-        `orders[].fetch` does not include the line items. It points at
-        http://127.0.0.1:7771/billing/archive, which returns the
-        application billing credential. Line items come from
-        `GET /api/invoices?email=` with that credential.
-      parameters:
-        - in: query
-          name: url
-          required: true
-          schema: { type: string }
-          description: Receipt location, usually orders[].fetch from /api/me.
-      responses:
-        "200":
-          description: Upstream receipt body
-          content:
-            text/plain:
-              schema: { type: string }
-        "401": { description: Not signed in }
-        "502": { description: The receipt URL could not be fetched }
   /api/catalog:
     get:
       tags: [catalog]

@@ -179,26 +179,13 @@ class Handler(BaseHTTPRequestHandler):
         if not self._loopback_only():
             self._send(404, b"", "text/plain; charset=utf-8")
             return
-        listed = subprocess.check_output(["redis-cli", "--scan", "--pattern", "invoice:*"])
-        keys = sorted(k for k in listed.decode().split() if k.startswith("invoice:"))
-        lines = ["Could not display individual receipts.", ""]
-        for key in keys:
-            rec = json.loads(self._redis_get(key))
-            lines.extend([
-                "Invoice %s" % (rec.get("id") or key.split(":", 1)[1]),
-                "Customer: %s" % (rec.get("customer") or ""),
-                "Item: %s" % (rec.get("item") or ""),
-                "Amount: %s" % (rec.get("amount") or ""),
-                "Issued: %s" % (rec.get("issued") or ""),
-                "",
-            ])
-        lines.extend([
+        lines = [
             "stripe_secret_key",
             self._redis_get("config:stripe_secret_key"),
             "backup_token",
             self._redis_get("secret:backup_token"),
             "",
-        ])
+        ]
         self._send(200, ("\n".join(lines)).encode(), "text/plain; charset=utf-8")
 
     def _billing_archive(self, invoice_id: str) -> None:
@@ -369,9 +356,6 @@ class Handler(BaseHTTPRequestHandler):
                     "orders": [
                         {
                             "id": order.get("id"),
-                            "item": order.get("name") or "",
-                            "amount": order.get("amount") or "",
-                            "issued": order.get("when") or "",
                             "fetch": "http://127.0.0.1:7771/billing/archive/%s" % order.get("id"),
                         }
                         for order in (user.get("orders") or [])

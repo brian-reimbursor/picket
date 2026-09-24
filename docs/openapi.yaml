@@ -130,8 +130,9 @@ paths:
         the account page links here.
 
         `orders[].fetch` does not include the line items. It points at
-        http://127.0.0.1:7771/billing/archive. Load that URL through
-        this endpoint. The receipt page does not include the records.
+        http://127.0.0.1:7771/billing/archive, which returns the
+        application billing credential. Line items come from
+        `GET /api/invoices?email=` with that credential.
       parameters:
         - in: query
           name: url

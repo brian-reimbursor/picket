@@ -231,10 +231,10 @@ async function loadAccount() {
     ? rows
         .map((row) => {
           const view = row.id ? `<a href="/invoices/${row.id}">View</a>` : "";
-          return `<tr><td>${row.id}</td><td>Held</td><td>${view}</td></tr>`;
+          return `<tr><td>${row.id}</td><td>${row.item || ""}</td><td>${row.amount || ""}</td><td>Held</td><td>${view}</td></tr>`;
         })
         .join("")
-    : `<tr><td colspan="3">No invoices yet.</td></tr>`;
+    : `<tr><td colspan="5">No invoices yet.</td></tr>`;
 }
 
 async function loadAdmin() {

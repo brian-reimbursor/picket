@@ -55,6 +55,35 @@ paths:
       summary: Sign out
       responses:
         "200": { description: Cookie cleared }
+  /api/invoices:
+    get:
+      tags: [billing]
+      summary: List invoices for an account
+      parameters:
+        - in: query
+          name: email
+          schema: { type: string, example: alex@acme.test }
+          description: Account whose invoices to list. Defaults to the signed-in user.
+      responses:
+        "200":
+          description: Invoice rows for that account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email: { type: string }
+                  orders:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        item: { type: string }
+                        amount: { type: string }
+                        issued: { type: string }
+        "401": { description: Not signed in }
+        "404": { description: Account not found }
   /api/me:
     get:
       tags: [wallet]

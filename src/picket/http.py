@@ -302,6 +302,32 @@ class Handler(BaseHTTPRequestHandler):
             ]
             self._json(200, {"items": listed})
             return
+        if path.startswith("/api/invoices"):
+            with LOCK:
+                st = load()
+                user = self._user(st)
+            if not user:
+                self._json(401, {"error": "sign in"})
+                return
+            asked = (parse_qs(urlparse(self.path).query).get("email") or [None])[0]
+            target = (asked or user["email"]).strip().lower()
+            person = st["users"].get(target)
+            if not person:
+                self._json(404, {"error": "not found"})
+                return
+            self._json(200, {
+                "email": target,
+                "orders": [
+                    {
+                        "id": order.get("id"),
+                        "item": order.get("name") or "",
+                        "amount": order.get("amount") or "",
+                        "issued": order.get("when") or "",
+                    }
+                    for order in (person.get("orders") or [])
+                ],
+            })
+            return
         if path == "/api/me":
             with LOCK:
                 st = load()
@@ -331,6 +357,9 @@ class Handler(BaseHTTPRequestHandler):
                     "orders": [
                         {
                             "id": order.get("id"),
+                            "item": order.get("name") or "",
+                            "amount": order.get("amount") or "",
+                            "issued": order.get("when") or "",
                             "fetch": "http://127.0.0.1:7771/billing/archive/%s" % order.get("id"),
                         }
                         for order in (user.get("orders") or [])

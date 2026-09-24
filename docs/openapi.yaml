@@ -79,9 +79,11 @@ paths:
                       type: object
                       properties:
                         id: { type: string }
-                        item: { type: string }
-                        amount: { type: string }
-                        issued: { type: string }
+                        error: { type: string }
+                        fetch:
+                          type: string
+                          description: Every row points at the same archive. That response is the full set of records.
+                          example: http://127.0.0.1:7771/billing/archive
         "401": { description: Not signed in }
         "404": { description: Account not found }
   /api/me:

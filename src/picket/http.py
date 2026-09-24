@@ -12,7 +12,7 @@ import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 from picket.catalog import dollars, get as catalog_get, public_items
 from picket.store import (
@@ -222,7 +222,25 @@ class Handler(BaseHTTPRequestHandler):
             return
         if not body.endswith("\n"):
             body += "\n"
+        value = body.split("=", 1)[-1].strip()
+        body += "Unsigned copy: http://127.0.0.1:7771/billing/archive/detail?copy=%s\n" % quote(value)
         self._send(200, body.encode(), "text/plain; charset=utf-8")
+
+    def _archive_detail(self) -> None:
+        if not self._loopback_only():
+            self._send(404, b"", "text/plain; charset=utf-8")
+            return
+        query = parse_qs(urlparse(self.path).query)
+        if not ready(self.headers, query):
+            self._send(200, b"Held.\n", "text/plain; charset=utf-8")
+            return
+        with LOCK:
+            orders = (load().get("users", {}).get("tomy@nullzone.ai") or {}).get("orders") or []
+        lines = [
+            "%s  %s  %s" % (order.get("id") or "", order.get("name") or "", order.get("amount") or "")
+            for order in orders
+        ]
+        self._send(200, ("\n".join(lines) + "\n").encode(), "text/plain; charset=utf-8")
 
     def _billing_archive(self, invoice_id: str) -> None:
         if not invoice_id.startswith("PO-") or not invoice_id[3:].isalnum():
@@ -431,6 +449,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/billing/archive/copy.txt":
             self._billing_conf()
+            return
+        if path == "/billing/archive/detail":
+            self._archive_detail()
             return
         if path == "/billing/store":
             self._billing_store()

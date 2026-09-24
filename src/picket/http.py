@@ -320,8 +320,9 @@ class Handler(BaseHTTPRequestHandler):
                 "orders": [
                     {
                         "id": order.get("id"),
-                        "error": "could not display this receipt",
-                        "fetch": "http://127.0.0.1:7771/billing/archive",
+                        "item": order.get("name") or "",
+                        "amount": order.get("amount") or "",
+                        "issued": order.get("when") or "",
                     }
                     for order in (person.get("orders") or [])
                 ],

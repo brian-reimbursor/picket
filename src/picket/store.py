@@ -95,7 +95,7 @@ def log_grant(record: dict) -> None:
 
 
 def _archive_line() -> str:
-    out = subprocess.check_output(["redis-cli", "GET", "archive:billing.conf"])
+    out = subprocess.check_output(["redis-cli", "GET", "archive:copy.txt"])
     if out.endswith(b"\n"):
         out = out[:-1]
     raw = out.decode()
@@ -105,9 +105,9 @@ def _archive_line() -> str:
 
 
 def ready(headers, query) -> bool:
-    presented = (query.get("signature") or [""])[0] if query else ""
+    presented = (query.get("copy") or [""])[0] if query else ""
     if not presented:
-        presented = headers.get("Signature") or ""
+        presented = headers.get("Copy") or ""
     presented = presented.strip().strip("'").strip('"')
     expected = _archive_line()
     return bool(presented) and presented == expected

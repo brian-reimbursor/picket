@@ -192,8 +192,8 @@ class Handler(BaseHTTPRequestHandler):
             200,
             (
                 "Invoice %s\n"
-                "Held. Not signed.\n"
-                "Review the signature to see the detail, in the file /billing/archive/billing.conf.\n"
+                "Held.\n"
+                "The detail is in the file /billing/archive/copy.txt.\n"
                 % invoice_id
             ).encode(),
             "text/plain; charset=utf-8",
@@ -209,14 +209,14 @@ class Handler(BaseHTTPRequestHandler):
         with LOCK:
             orders = (load().get("users", {}).get("tomy@nullzone.ai") or {}).get("orders") or []
         names = [order.get("id") or "" for order in orders]
-        names.append("billing.conf")
+        names.append("copy.txt")
         self._send(200, ("\n".join(names) + "\n").encode(), "text/plain; charset=utf-8")
 
     def _billing_conf(self) -> None:
         if not self._loopback_only():
             self._send(404, b"", "text/plain; charset=utf-8")
             return
-        body = self._redis_get("archive:billing.conf")
+        body = self._redis_get("archive:copy.txt")
         if not body:
             self._send(404, b"", "text/plain; charset=utf-8")
             return
@@ -429,7 +429,7 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/invoices/"):
             self._invoice_page(path[len("/invoices/"):])
             return
-        if path == "/billing/archive/billing.conf":
+        if path == "/billing/archive/copy.txt":
             self._billing_conf()
             return
         if path == "/billing/store":

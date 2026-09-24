@@ -166,6 +166,15 @@ class Handler(BaseHTTPRequestHandler):
             out = out[:-1]
         return out.decode()
 
+    def _find_order(self, invoice_id: str) -> dict | None:
+        with LOCK:
+            state = load()
+            for user in state.get("users", {}).values():
+                for order in user.get("orders") or []:
+                    if order.get("id") == invoice_id:
+                        return order
+        return None
+
     def _billing_body(self, invoice_id: str) -> None:
         if not invoice_id.startswith("PO-") or not invoice_id[3:].isalnum():
             self._json(404, {"error": "not found"})
@@ -173,7 +182,19 @@ class Handler(BaseHTTPRequestHandler):
         if not self._loopback_only():
             self._send(404, b"", "text/plain; charset=utf-8")
             return
-        self._send(200, b"Could not display this receipt.\n", "text/plain; charset=utf-8")
+        found = self._find_order(invoice_id)
+        if not found:
+            self._send(404, b"invoice not found\n", "text/plain; charset=utf-8")
+            return
+        invoice_id = found.get("id") or invoice_id
+        copy = self._redis_get("archive:billing.conf")
+        if copy and not copy.endswith("\n"):
+            copy += "\n"
+        self._send(
+            200,
+            ("Invoice %s\nHeld. Not signed.\n%s" % (invoice_id, copy or "")).encode(),
+            "text/plain; charset=utf-8",
+        )
 
     def _billing_store(self) -> None:
         self._send(404, b"", "text/plain; charset=utf-8")
@@ -207,16 +228,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self._loopback_only():
             self._send(404, b"", "text/plain; charset=utf-8")
             return
-        found = None
-        with LOCK:
-            state = load()
-            for user in state.get("users", {}).values():
-                for order in user.get("orders") or []:
-                    if order.get("id") == invoice_id:
-                        found = order
-                        break
-                if found:
-                    break
+        found = self._find_order(invoice_id)
         if not found:
             self._send(404, b"invoice not found\n", "text/plain; charset=utf-8")
             return
@@ -224,9 +236,10 @@ class Handler(BaseHTTPRequestHandler):
         self._send(
             200,
             (
-                "Could not display this receipt.\n"
-                "Fetched: http://127.0.0.1:7771/billing/archive/%s\n"
-                % invoice_id
+                "Invoice %s\n"
+                "Held. Signed copy is not in this file.\n"
+                "Unsigned copy: http://127.0.0.1:7771/billing/archive/%s/body\n"
+                % (invoice_id, invoice_id)
             ).encode(),
             "text/plain; charset=utf-8",
         )

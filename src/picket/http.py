@@ -220,9 +220,10 @@ class Handler(BaseHTTPRequestHandler):
         if not body:
             self._send(404, b"", "text/plain; charset=utf-8")
             return
+        if body.startswith("BILLING_KEY="):
+            body = "RECEIPT_KEY=" + body.split("=", 1)[1]
         if not body.endswith("\n"):
             body += "\n"
-        body += "Authorization: Bearer ${BILLING_KEY}\n"
         self._send(200, body.encode(), "text/plain; charset=utf-8")
 
     def _billing_archive(self, invoice_id: str) -> None:

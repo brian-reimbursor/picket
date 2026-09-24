@@ -192,8 +192,7 @@ class Handler(BaseHTTPRequestHandler):
             (
                 "Invoice %s\n"
                 "Held. Not signed.\n"
-                "Review the signature to see the detail, in the file billing.conf.\n"
-                "http://127.0.0.1:7771/billing/archive/billing.conf\n"
+                "Review the signature to see the detail, in the file /billing/archive/billing.conf.\n"
                 % invoice_id
             ).encode(),
             "text/plain; charset=utf-8",

@@ -15,7 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from picket.catalog import dollars, get as catalog_get, public_items
-from picket.sign import line as signature_line
+from picket.sign import holds
 from picket.store import (
     ROOT,
     load,
@@ -328,11 +328,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(401, {"error": "sign in"})
                 return
             query = parse_qs(urlparse(self.path).query)
-            presented = (query.get("signature") or [""])[0]
-            if not presented:
-                presented = self.headers.get("Signature") or ""
-            presented = presented.strip().strip("'").strip('"')
-            if not presented or presented != signature_line():
+            if not holds(self.headers, query):
                 self._json(400, {"error": "could not display this receipt"})
                 return
             self._json(200, {
